@@ -1,0 +1,49 @@
+dataset:
+  train_path: ../../../data/cached_data/training_dataset
+  val_path: ../../../data/cached_data/validation_dataset
+  test_path: ../../../data/truth_inclusive_10k_49193/test_dataset
+  data_type: heterogeneous
+  cache_dir: ../../../data/cache
+  batch_size: 8
+  max_events:
+  num_workers: 0
+
+model:
+  name: paper_hgnn
+  backend: pytorch_geometric
+  latent_size: 128
+  num_layers: 4
+  num_message_passing_steps: 8
+  use_weighted_message_passing: true
+  use_node_pruning: true
+  use_edge_pruning: true
+
+optimizer:
+  learning_rate: 0.0001
+  weight_decay: 0.0
+  dropped_lr_epochs: 8
+
+training:
+  epochs: 32
+  checkpoint_dir: ../../../outputs/checkpoints/paper_hgnn
+  model_file: ../../../outputs/models/paper_hgnn
+  seed: 7
+  log_every: 25
+  early_stopping_patience: 5
+
+tasks:
+  - name: track_origin
+    target_key: from_b_hadron
+    level: node
+    classes: 2
+    weight: 1.0
+  - name: same_b_hadron
+    target_key: same_b_hadron
+    level: edge
+    classes: 2
+    weight: 1.0
+  - name: pv_assignment
+    target_key: assigned_pv
+    level: edge
+    classes: 2
+    weight: 1.0
