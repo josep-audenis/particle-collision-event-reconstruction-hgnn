@@ -1,88 +1,73 @@
-# Scalable Multi-Task Learning for Particle Collision Event Reconstruction with Heterogeneous GNNs
+# LHCb HGNN for DFEI and IFT
 
-Github repo for “Scalable Multi-Task Learning for Particle Collision Event Reconstruction with Heterogeneous Graph Neural Networks”. 
+This repository contains the LHCb heterogeneous graph neural network workflow for
+DFEI reconstruction and IFT flavour tagging. The current code path is the
+Lightning-based implementation under `wmpgnn/analysis`, with model components in
+`wmpgnn/model`, loaders in `wmpgnn/data_loader`, reconstruction helpers in
+`wmpgnn/reconstruction`, and performance tools in `wmpgnn/performance`.
 
-Here we present code for a scalable Heterogeneous graph network with integrated pruning layers, 
-which jointly determines if tracks originate from decay of beauty hadrons and associates each track
-to a proton-proton collision point known as a primary vertex (PV). Both HGNN and GNN architectures
-with node and edge pruning are available for benchmarking.
+## Installation
 
-The paper is available at https://arxiv.org/abs/2504.21844
-
-
-## Installation:
-
-### Using `pip`
+Python 3.11 is recommended.
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### Using `conda`
+For PyTorch Geometric CUDA wheels, `requirements.txt` points to the PyG wheel
+index for Torch 2.6.0 and CUDA 12.6.
 
-```bash
-conda env create -n hgnn python=3.11 
-conda activate hgnn
-pip install -r requirements.txt
-```
+## Configs
 
-Note that for graphviz which is used for the performance you will need to install it:
+Main configs live in `config_files`:
 
-Linux:
-```bash
-sudo apt-get install graphviz graphviz-dev
-```
+- `train_DFEI.yaml`
+- `train_IFT.yaml`
+- `evaluate_DFEI.yaml`
+- `evaluate_IFT.yaml`
 
-Mac:
-```bash
-sudo brew install graphviz
-```
+Additional experiment configs live in `examples`.
 
-## Datasets
-
-More information on the dataset is available in Dataset.md
-
-The training, validation and test datasets are available on Zenodo:
-https://zenodo.org/records/15584745
-
-
-In particular for a default training of the model you should use the dataset
-inclusive_training_validation_dataset
-with ~40k training and ~10k validation events.
-
-The corresonding test dataset (~10k) is: 
-inclusive_test_dataset.tar.gz
-
-Meanwhile, for several exclusive decays we also provide test samples with more detail in Dataset.md
-## Config files
-
-The training and inference of the HGNN and GNN models are controlled by yaml config files 
-located in config_files. These configure model and training hyperparameters and the model
-to load in the case of inference.
-
-For training set the relevant path to the datasets described above. 
+Before running, update each config path under `settings.data_dir`, plus any
+checkpoint or log path needed by your environment.
 
 ## Training
 
-In order to train the HGNN model you can run the following command:
-```bash 
-python3 -m scripts.train  small_hetero_gnn.yaml 
-```
-meanwhile the GNN training can be run with
-```bash 
-python3 -m scripts.train  small_mp_gnn.yaml 
-```
+Run from `config_files`:
 
-
-## Inference and performance
-
-For model inference and assessing performance we provide scripts for the HGNN:
-```bash 
-python3 -m scripts.hetero_inference  test_heteromp_gnn_inference.yaml 
-```
-and GNN:
-```bash 
-python3 -m scripts.homog_inference  test_mp_gnn_inference.yaml 
+```bash
+cd config_files
+python ../wmpgnn/analysis/trainer.py --config train_DFEI.yaml
+python ../wmpgnn/analysis/trainer.py --config train_IFT.yaml
 ```
 
+Run example sweeps from `examples`:
 
+```bash
+cd examples
+bash run.sh
+```
+
+or use the summary wrapper:
+
+```bash
+cd examples
+bash fancy_run.sh
+```
+
+## Evaluation
+
+Run from `config_files`:
+
+```bash
+cd config_files
+python ../wmpgnn/analysis/evaluate.py --config evaluate_DFEI.yaml
+python ../wmpgnn/analysis/evaluate.py --config evaluate_IFT.yaml
+```
+
+Outputs are written to the log/output paths configured in the YAML files.
+
+## Dataset Notes
+
+Dataset documentation from the imported snapshot is in `Dataset.md`. Large local
+datasets, model checkpoints, and generated outputs should stay outside git.

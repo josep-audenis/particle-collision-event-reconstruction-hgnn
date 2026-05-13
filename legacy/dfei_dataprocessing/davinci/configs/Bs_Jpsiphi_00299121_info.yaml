@@ -1,0 +1,35 @@
+# YAML file containing the input files to process inclusive bbar MAGUP data
+conddb_tag: sim10-2024.W41.42-v00.00-mu100
+data_type: Upgrade
+dddb_tag: 2024-v00.03
+evt_max: '-1'
+input_files:
+  - root://x509up_u11207@eoslhcb.cern.ch//eos/lhcb/grid/prod/lhcb/MC/2024/HLT2.DST/00299121/0000/00299121_00000010_1.hlt2.dst
+  - root://x509up_u11207@eoslhcb.cern.ch//eos/lhcb/grid/prod/lhcb/MC/2024/HLT2.DST/00299121/0000/00299121_00000014_1.hlt2.dst
+  - root://x509up_u11207@eoslhcb.cern.ch//eos/lhcb/grid/prod/lhcb/MC/2024/HLT2.DST/00299121/0000/00299121_00000016_1.hlt2.dst
+  - root://x509up_u11207@eoslhcb.cern.ch//eos/lhcb/grid/prod/lhcb/MC/2024/HLT2.DST/00299121/0000/00299121_00000017_1.hlt2.dst
+  - root://x509up_u11207@eoslhcb.cern.ch//eos/lhcb/grid/prod/lhcb/MC/2024/HLT2.DST/00299121/0000/00299121_00000024_1.hlt2.dst
+  - root://x509up_u11207@eoslhcb.cern.ch//eos/lhcb/grid/prod/lhcb/MC/2024/HLT2.DST/00299121/0000/00299121_00000025_1.hlt2.dst
+  - root://x509up_u11207@eoslhcb.cern.ch//eos/lhcb/grid/prod/lhcb/MC/2024/HLT2.DST/00299121/0000/00299121_00000030_1.hlt2.dst
+  - root://x509up_u11207@eoslhcb.cern.ch//eos/lhcb/grid/prod/lhcb/MC/2024/HLT2.DST/00299121/0000/00299121_00000031_1.hlt2.dst
+  - root://x509up_u11207@eoslhcb.cern.ch//eos/lhcb/grid/prod/lhcb/MC/2024/HLT2.DST/00299121/0000/00299121_00000039_1.hlt2.dst
+  - root://x509up_u11207@eoslhcb.cern.ch//eos/lhcb/grid/prod/lhcb/MC/2024/HLT2.DST/00299121/0000/00299121_00000044_1.hlt2.dst
+  - root://x509up_u11207@eoslhcb.cern.ch//eos/lhcb/grid/prod/lhcb/MC/2024/HLT2.DST/00299121/0000/00299121_00000046_1.hlt2.dst
+  - root://x509up_u11207@eoslhcb.cern.ch//eos/lhcb/grid/prod/lhcb/MC/2024/HLT2.DST/00299121/0000/00299121_00000049_1.hlt2.dst
+  - root://x509up_u11207@eoslhcb.cern.ch//eos/lhcb/grid/prod/lhcb/MC/2024/HLT2.DST/00299121/0000/00299121_00000054_1.hlt2.dst
+  - root://x509up_u11207@eoslhcb.cern.ch//eos/lhcb/grid/prod/lhcb/MC/2024/HLT2.DST/00299121/0000/00299121_00000056_1.hlt2.dst
+  - root://x509up_u11207@eoslhcb.cern.ch//eos/lhcb/grid/prod/lhcb/MC/2024/HLT2.DST/00299121/0000/00299121_00000061_1.hlt2.dst
+  - root://x509up_u11207@eoslhcb.cern.ch//eos/lhcb/grid/prod/lhcb/MC/2024/HLT2.DST/00299121/0000/00299121_00000063_1.hlt2.dst
+  - root://x509up_u11207@eoslhcb.cern.ch//eos/lhcb/grid/prod/lhcb/MC/2024/HLT2.DST/00299121/0000/00299121_00000069_1.hlt2.dst
+  - root://x509up_u11207@eoslhcb.cern.ch//eos/lhcb/grid/prod/lhcb/MC/2024/HLT2.DST/00299121/0000/00299121_00000071_1.hlt2.dst
+  - root://x509up_u11207@eoslhcb.cern.ch//eos/lhcb/grid/prod/lhcb/MC/2024/HLT2.DST/00299121/0000/00299121_00000073_1.hlt2.dst
+  - root://x509up_u11207@eoslhcb.cern.ch//eos/lhcb/grid/prod/lhcb/MC/2024/HLT2.DST/00299121/0000/00299121_00000074_1.hlt2.dst
+input_process: Hlt2
+input_raw_format: '0.5'
+input_type: ROOT
+ntuple_file: DFEI_tuple_00299121_Bs_Jpsiphi.root
+output_type: ROOT
+print_freq: '1000'
+simulation: 'True'
+
+
