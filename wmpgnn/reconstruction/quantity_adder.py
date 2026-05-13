@@ -10,8 +10,8 @@ def get_asso_frag(sig_dict, graph, cluster):
 
     cluster_keys = cluster['node_keys']
     keys = graph['final_keys']
-    b_daugthers_mask = np.isin(keys, cluster_keys)
-    b_idx = str(graph["tracks"].asso_hh[b_daugthers_mask][0].item())
+    b_daughters_mask = np.isin(keys, cluster_keys)
+    b_idx = str(graph["tracks"].asso_hh[b_daughters_mask][0].item())
 
     int_list = graph["frag_y"].tolist()
     first_two = np.array([str(num)[:2] for num in int_list])
@@ -28,13 +28,13 @@ def get_pred_ft(sig_dict, graph, cluster, ft_score):
     # Save combined b bbar score, save individual scores, save pid of final
     cluster_keys = cluster['node_keys']
     keys = graph['final_keys']
-    b_daugthers_mask = np.isin(keys, cluster_keys)
+    b_daughters_mask = np.isin(keys, cluster_keys)
 
     # Get the pid of the particles
-    res_dict["final_pid"] = ','.join(str(x.item()) for x in graph["part_ids"][b_daugthers_mask])
+    res_dict["final_pid"] = ','.join(str(x.item()) for x in graph["part_ids"][b_daughters_mask])
 
     # Get the individual scores stored as strings
-    ft_score = ft_score[b_daugthers_mask].cpu()
+    ft_score = ft_score[b_daughters_mask].cpu()
     res_dict["final_b_score"] = ','.join(str(x.item()) for x in ft_score[:, :1].squeeze())
     res_dict["final_bbar_score"] = ','.join(str(x.item()) for x in ft_score[:, 2:].squeeze())
 
@@ -48,14 +48,14 @@ def get_pv_asso(sig_dict, graph, cluster, pv_des):
     # Get the key information of the cluster which is looked at
     cluster_keys = cluster['node_keys']
     keys = graph['final_keys']
-    b_daugthers_mask = np.isin(keys, cluster_keys)
+    b_daughters_mask = np.isin(keys, cluster_keys)
 
     # Get the individual scores stored as strings
-    true_pv = pv_des["true"][b_daugthers_mask]
-    minIP_pv = pv_des["ip"][b_daugthers_mask]
+    true_pv = pv_des["true"][b_daughters_mask]
+    minIP_pv = pv_des["ip"][b_daughters_mask]
 
     # Either per track level or on the full B system
-    pred_pv = pv_des["pred"][b_daugthers_mask]
+    pred_pv = pv_des["pred"][b_daughters_mask]
     pred_pv_track = torch.argmax(pred_pv, dim=1)
     pred_pv_system = torch.argmax(torch.sum(pred_pv, dim=0))
 

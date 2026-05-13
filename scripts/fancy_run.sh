@@ -35,7 +35,7 @@ echo ""
 # Testing the training script for DFEI
 echo "=== DFEI Training ==="
 configs=(
-    "train_DFEI_b_duaghters_only.yaml"
+    "train_DFEI_b_daughters_only.yaml"
     "train_DFEI_cpt.yaml"
     "train_DFEI_full.yaml"
     "train_DFEI_PVassoTrue.yaml"

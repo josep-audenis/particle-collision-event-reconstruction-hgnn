@@ -1,6 +1,6 @@
 #!/bin/bash
 # Testing the training script for DFEI
-python ../wmpgnn/analysis/trainer.py --config train_DFEI_b_duaghters_only.yaml
+python ../wmpgnn/analysis/trainer.py --config train_DFEI_b_daughters_only.yaml
 python ../wmpgnn/analysis/trainer.py --config train_DFEI_cpt.yaml
 python ../wmpgnn/analysis/trainer.py --config train_DFEI_full.yaml
 python ../wmpgnn/analysis/trainer.py --config train_DFEI_PVassoTrue.yaml

@@ -1,47 +1,40 @@
-# Use PyG’s custom wheel index for torch-scatter, etc.
---find-links https://data.pyg.org/whl/torch-2.6.0+cu126.html
-
-lightning[extra]
-
-# Core PyTorch stack
-torch
-torchvision
-torchaudio
-
-# PyTorch Geometric
-torch_geometric
-
-# Optional PyG dependencies
-pyg_lib
-torch_scatter
-torch_sparse
-torch_cluster
-torch_spline_conv
-
-# Other packages
-dm-tree
-scikit-learn
-matplotlib
-mplhep
-particle
-nvitop
+# PyTorch CPU stack.
+--find-links https://data.pyg.org/whl/torch-2.8.0+cpu.html
 
 torch==2.8.0
 torchvision==0.23.0
 torchaudio==2.8.0
 
-# PyTorch Geometric and dependencies
+# PyTorch Geometric.
 torch_geometric
 pyg_lib
 torch_scatter
 torch_sparse
 torch_cluster
 torch_spline_conv
--f https://data.pyg.org/whl/torch-2.8.0+cpu.html
 
-# Other required libraries
+# Training.
 pytorch_lightning
-mplhep
-particle
-nvitop
 tensorboard
+
+# Data processing.
+numpy
+pandas
+PyYAML
+zstandard
+uproot
+awkward
+
+# Plotting and metrics.
+matplotlib
+mplhep
+scikit-learn
+scipy
+seaborn
+
+# Physics utilities.
+particle
+scikit-hep
+
+# Optional monitoring.
+nvitop
