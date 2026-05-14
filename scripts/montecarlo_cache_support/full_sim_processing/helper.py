@@ -214,7 +214,7 @@ def layer_transitions(graph, root):
                 layer[child] = depth + 1
                 queue.append((child, depth + 1))
 
-    # group edges by transition (layer → layer+1)
+    # group edges by transition (layer -> layer+1)
     transitions = defaultdict(dict)
 
     for parent, children in graph.items():

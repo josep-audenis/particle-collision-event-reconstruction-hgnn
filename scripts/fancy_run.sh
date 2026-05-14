@@ -15,10 +15,10 @@ run_config() {
     echo -e "${BLUE}Running: $script --config $config${NC}"
     
     if python "$script" --config "$config"; then
-        echo -e "${GREEN}✓ SUCCESS: $config${NC}\n"
+        echo -e "${GREEN}[OK] SUCCESS: $config${NC}\n"
         return 0
     else
-        echo -e "${RED}✗ FAILED: $config${NC}\n"
+        echo -e "${RED}[FAIL] FAILED: $config${NC}\n"
         return 1
     fi
 }
@@ -85,7 +85,7 @@ echo ""
 if [ ${#SUCCESSFUL_CONFIGS[@]} -gt 0 ]; then
     echo -e "${GREEN}Successful configs (${#SUCCESSFUL_CONFIGS[@]}):${NC}"
     for config in "${SUCCESSFUL_CONFIGS[@]}"; do
-        echo -e "  ${GREEN}✓${NC} $config"
+        echo -e "  ${GREEN}[OK]${NC} $config"
     done
     echo ""
 fi
@@ -93,7 +93,7 @@ fi
 if [ ${#FAILED_CONFIGS[@]} -gt 0 ]; then
     echo -e "${RED}Failed configs (${#FAILED_CONFIGS[@]}):${NC}"
     for config in "${FAILED_CONFIGS[@]}"; do
-        echo -e "  ${RED}✗${NC} $config"
+        echo -e "  ${RED}[FAIL]${NC} $config"
     done
     echo ""
     exit 1

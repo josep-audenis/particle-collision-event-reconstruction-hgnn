@@ -5,6 +5,7 @@ from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
 
 import torch
 
+torch.multiprocessing.set_sharing_strategy("file_system")
 torch.set_float32_matmul_precision("high")
 seed_everything(42, workers=True)
 

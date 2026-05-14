@@ -132,7 +132,7 @@ class ChunkDataset(IterableDataset):
 
     def get_weights(self):
         weights = {}
-        for i in range(10):
+        for i in range(self.n_chunks):
             weights[i] = self._load_chunk(i, mode="weights")
         return weights
 

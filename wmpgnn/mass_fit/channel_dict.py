@@ -18,7 +18,7 @@ def compute_b_kinematics(df_row):
     pid_signed = np.array([int(x) for x in df_row["final_pid"].split(",")])
     pid = np.abs(pid_signed)
 
-    # Handle unknown PIDs → return -1 sentinel row
+    # Handle unknown PIDs -> return -1 sentinel row
     try:
         mass = np.array([mass_dict[part] for part in pid])
     except KeyError:

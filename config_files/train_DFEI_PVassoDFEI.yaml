@@ -1,8 +1,9 @@
 settings:
   # Input file information
-  data_dir: "/eos/user/y/yukaiz/DFEI_IFT/cached_data/DFEI_LHCb_LHCbcollision_normed_pt_data/" # DFEI_pythia_nu7p6_normed_pt_data, DFEI_LHCb_LHCbcollision_normed_pt_data
-  sample: [ "00299121_Bs_Jpsiphi", "00299103_Bs_Jpsiphi","00258329_inclusive", "00258341_inclusive" ]
-  nfiles: [ 10, 10, 0, 0 ]
+  data_dir: "data/montecarlo/cache_10000/DFEI_LHCb_LHCbcollision_normed_pt_data/"
+  sample: [ "00353851_inclusive" ]
+  
+  nfiles: [ 10 ]
   # Training settings
   batch_size: 16
   lr: 1e-3
@@ -10,11 +11,13 @@ settings:
   epochs: 1
   gacc: 1  # Accumulating number of mini batches before step
   ngpu: 1  # Number of GPUs used for training
-  ncpu: 8  # Number CPUs used for multithreading/data loader,
+  ncpu: 2  # Number CPUs used for multithreading/data loader,
+  calibration: false
   # Preselection filters
   graph_mode: "None"  # Apply pruning on initial graph: "true", "true_frag" "None"
   node_sel: "true"  # Pruner used to apply the graph mode above: "true", "zeros", "default"
   pv_model: 2 # Initial PV association: DFEI_model_number, "true", "ip", "None"
+  calibration: false
   # can add additional pv settings here
 
 inference:
@@ -32,8 +35,9 @@ inference:
 
 
 evaluate:
-  sample: [ "00299103_Bs_Jpsiphi", "00299121_Bs_Jpsiphi" ]
-  nfiles: [ 1, 1 ]
+  sample: [ "00353851_inclusive" ]
+  
+  nfiles: [ 10 ]
   over_write: "" # argument to overwrite the output names to rerun safely the same sample: "" for no overwrite
 
 

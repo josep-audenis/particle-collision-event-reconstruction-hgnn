@@ -3,8 +3,9 @@ settings:
   model: 3 # version number or full path
   # dfei model for IFT, always specify for logging with clear information
   dfei_model: "None" # DFEI model which is used within IFT: "None", "DFEI_version_number"
-  data_dir: "/eos/user/y/yukaiz/DFEI_IFT/cached_data/DFEI_LHCb_LHCbcollision_normed_pt_data"
-  ncpu: 8  # NCPUs for data loader, full dataset limited to 8 for workers due to cpu mem constraints
+  data_dir: "data/montecarlo/cache_10000/DFEI_LHCb_LHCbcollision_normed_pt_data/"
+  ncpu: 2  # NCPUs for data loader, full dataset limited to 8 for workers due to cpu mem constraints
+  calibration: false
 
 inference:
   edge_prune_thr: 0.9  # Edge prune threshold during reco
@@ -12,6 +13,7 @@ inference:
 
 
 evaluate:
-  sample: [ "00338627_Bd_JpsiKst", "00338645_Bd_JpsiKst" ]
-  nfiles: [ 20 , 20 ]
+  sample: [ "00353851_inclusive" ]
+  
+  nfiles: [ 10 ]
   over_write: "" # argument to overwrite the output names to rerun safely the same sample: "" for no overwrite

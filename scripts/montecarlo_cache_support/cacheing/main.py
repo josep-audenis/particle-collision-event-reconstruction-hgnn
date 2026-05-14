@@ -22,7 +22,7 @@ if __name__ == "__main__":
     parser.add_argument('--ft', action='store_true',
                         help='Saving information for FT inference')
     parser.add_argument('--edgeprune', action='store_true',
-                        help='Apply early edge prune which requires θ < 0.26 rad or same PV from minIP')
+                        help='Apply early edge prune which requires theta < 0.26 rad or same PV from minIP')
     parser.add_argument('--normed', action='store_true',
                         help='Normalize graph')
     parser.add_argument('--config', type=str, default=None,
