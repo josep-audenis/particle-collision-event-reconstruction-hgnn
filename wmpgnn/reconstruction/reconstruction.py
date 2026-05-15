@@ -11,6 +11,35 @@ from wmpgnn.reconstruction.reco_helper import *
 from wmpgnn.reconstruction.quantity_adder import *
 
 
+def count_visible_heavy_hadron_particles(final_keys, truth_clusters):
+    truth_keys = flatten([cluster["node_keys"] for cluster in truth_clusters.values()])
+    return len(set(final_keys).intersection(truth_keys))
+
+
+def count_reco_background_particles(reco_keys, true_keys):
+    return len(set(reco_keys).difference(true_keys))
+
+
+def is_signal_match(signal, labels, node_keys):
+    if signal is None:
+        return 1
+
+    mothers = [label[3:] for label in labels if "c" == label[0]]
+    daughters = [
+        label.split(":")[1]
+        for label in labels
+        if label.startswith("k") and ":" in label and int(float(label.split(":")[0][1:])) in node_keys
+    ]
+
+    matches_decay = match_decays(daughters, signal[0]["daughters"]) or match_decays(daughters, signal[1]["daughters"])
+    if not matches_decay:
+        return 0
+
+    check_mothers1 = all(mother in mothers for mother in signal[0]["mothers"])
+    check_mothers2 = all(mother in mothers for mother in signal[1]["mothers"])
+    return int(check_mothers1 or check_mothers2)
+
+
 class EventReconstruction:
     def __init__(self, configs):
         # boolean whether to use true reconstruction or predicted reconstruction
@@ -151,27 +180,28 @@ class EventReconstruction:
         else:
             reco_LCA = lca_reco_matrix(graph, mode="true")
 
-        particle_keys = graph["final_keys"].tolist()
-        n_part = len(particle_keys)
-        rc_dict, r_nclust_order, _ = reconstruct_decay(reco_LCA, particle_keys)
+        final_particle_keys = graph["final_keys"].tolist()
+        n_part = len(final_particle_keys)
+        rc_dict, r_nclust_order, _ = reconstruct_decay(reco_LCA, final_particle_keys)
 
-        particle_keys = graph["truth_part_keys"].tolist()
+        truth_particle_keys = graph["truth_part_keys"].tolist()
 
         particle_ids = list(map(particle_name, graph['truth_part_ids'].numpy()))
 
-        tc_dict, t_nclust_order, max_chain_depth = reconstruct_decay(true_LCA, particle_keys,
+        tc_dict, t_nclust_order, max_chain_depth = reconstruct_decay(true_LCA, truth_particle_keys,
                                                                      particle_ids=particle_ids,
                                                                      truth_level_simulation=1)
         if tc_dict != {}:
-            part_heavy_h = flatten([tc_dict[tc_firstkey]['node_keys'] for tc_firstkey in tc_dict.keys()])
-            n_part_heavy_h = len(part_heavy_h)
+            n_part_heavy_h = count_visible_heavy_hadron_particles(final_particle_keys, tc_dict)
             n_bkg_part = n_part - n_part_heavy_h
 
             if rc_dict != {}:
                 sel_part = flatten(
                     [rc_dict[tc_firstkey]['node_keys'] for tc_firstkey in rc_dict.keys()])
                 n_sel_part = len(sel_part)
-                n_sel_heavy_h = len(list(set(sel_part).intersection(part_heavy_h)))
+                n_sel_heavy_h = len(list(set(sel_part).intersection(final_particle_keys).intersection(
+                    flatten([tc_dict[tc_firstkey]['node_keys'] for tc_firstkey in tc_dict.keys()])
+                )))
                 n_sel_bkg_part = n_sel_part - n_sel_heavy_h
             else:
                 n_sel_part, n_sel_heavy_h, n_sel_bkg_part = 0, 0, 0
@@ -187,24 +217,7 @@ class EventReconstruction:
                             "PerfectReco": 0, "AllParticles": 0, "NoneIso": 0, "PartReco": 0, "NotFound": 0,
                             "NumBkgParticles_noniso": -999}
                 tc = tc_dict[tc_key]
-                sig_dict["SigMatch"] = 0
-                if self.signal:
-                    labels = tc['labels']
-                    mothers = [label[3:] for label in labels if 'c' == label[0]]
-                    node_keys = tc['node_keys']
-                    daughters = [label.split(':')[1] for label in labels if
-                                 int(float(label.split(':')[0][1:])) in node_keys]
-                    if match_decays(daughters, self.signal[0]['daughters']) or match_decays(daughters,
-                                                                                            self.signal[1][
-                                                                                                'daughters']):
-                        check_mothers1 = True
-                        check_mothers2 = True
-                        for i in range(len(self.signal[0]['mothers'])):
-                            if self.signal[0]['mothers'][i] not in mothers:
-                                check_mothers1 = False
-                            if self.signal[1]['mothers'][i] not in mothers:
-                                check_mothers2 = False
-                        sig_dict["SigMatch"] = int(check_mothers1 or check_mothers2)
+                sig_dict["SigMatch"] = is_signal_match(self.signal, tc["labels"], tc["node_keys"])
 
                 sig_dict["NumSignalParticles"] = len(tc['node_keys'])
 
@@ -221,6 +234,7 @@ class EventReconstruction:
                     true_in_reco = np.sum(np.isin(tc['node_keys'], rc['node_keys'])) / len(tc['node_keys'])
                     if rc['node_keys'] == tc['node_keys']:
                         sig_dict["AllParticles"] = 1
+                        sig_dict["NumBkgParticles_noniso"] = 0
                         if rc['LCA_values'] == tc['LCA_values']:
                             sig_dict["PerfectReco"] = 1
                         sig_dict["NoneIso"] = sig_dict["PartReco"] = 0
@@ -233,6 +247,9 @@ class EventReconstruction:
                     elif true_in_reco == 1 and len(rc['node_keys']) > len(tc['node_keys']):
                         sig_dict["NoneIso"] = 1  # background tracks in signal
                         sig_dict["PartReco"] = 0
+                        sig_dict["NumBkgParticles_noniso"] = count_reco_background_particles(
+                            rc["node_keys"], tc["node_keys"]
+                        )
                         if ft_des is not None:
                             sig_dict = get_pred_ft(sig_dict, graph, rc, ft_des)
                             sig_dict = get_asso_frag(sig_dict, graph, rc)
@@ -241,7 +258,9 @@ class EventReconstruction:
                         break
                     elif 0.2 <= true_in_reco < 1:
                         sig_dict["PartReco"] = 1  # FT decision can not be trusted
-                        sig_dict["NumBkgParticles_noniso"] = len(rc['node_keys']) - len(tc['node_keys'])
+                        sig_dict["NumBkgParticles_noniso"] = count_reco_background_particles(
+                            rc["node_keys"], tc["node_keys"]
+                        )
                         if ft_des is not None:
                             sig_dict = get_pred_ft(sig_dict, graph, rc, ft_des)
                             sig_dict = get_asso_frag(sig_dict, graph, rc)
@@ -256,7 +275,7 @@ class EventReconstruction:
                     sig_dict["NotFound"] = 1
 
                 # Get origin B id
-                indices = [particle_keys.index(x) for x in tc['node_keys']]
+                indices = [truth_particle_keys.index(x) for x in tc['node_keys']]
                 signal_LCA_id = true_LCA[true_LCA['senders'].isin(indices) | true_LCA['receivers'].isin(indices)][
                     "LCA_id"]
                 values, counts = np.unique(signal_LCA_id, return_counts=True)

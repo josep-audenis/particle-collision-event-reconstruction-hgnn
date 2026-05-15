@@ -47,9 +47,7 @@ def analyze_tagging_power(df: pd.DataFrame, version: str, signal: str, log_dir: 
     file = f"{log_dir}/IFT/version_{version}/info_{signal}_FT.txt"
 
     os.makedirs(os.path.dirname(file), exist_ok=True)
-    cond = "a" if os.path.exists(file) else "w"
-
-    with open(file, cond) as f:
+    with open(file, "w") as f:
         f.write("=" * 50 + "\n")
         f.write("FLAVOUR TAGGING POWER \n")
 

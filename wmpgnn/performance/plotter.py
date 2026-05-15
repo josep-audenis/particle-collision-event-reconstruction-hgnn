@@ -12,16 +12,22 @@ hep.style.use(hep.style.LHCb2)
 
 def plot_weights(pos_weight, neg_weights, labels, version, model="DFEI", channel="inclusive", log_dir='lightning_logs',
                  suffix=None):
-    true_weights = np.ones(pos_weight.shape[0]) / len(pos_weight)
-    fake_weights = np.ones(neg_weights.shape[0]) / len(neg_weights)
+    pos_weight = np.asarray(pos_weight)
+    neg_weights = np.asarray(neg_weights)
+    true_weights = np.ones(pos_weight.shape[0]) / len(pos_weight) if len(pos_weight) else None
+    fake_weights = np.ones(neg_weights.shape[0]) / len(neg_weights) if len(neg_weights) else None
 
     f, ax = plt.subplots(figsize=(9, 6))
-    ax.hist(pos_weight, bins=100, range=[0, 1], alpha=.7, label=labels[1], color='#B22222',
-            weights=true_weights
-            )
-    ax.hist(neg_weights, bins=100, range=[0, 1], alpha=.8, label=labels[2], color='#4169E1',
-            weights=fake_weights
-            )
+    pos_hist = None
+    neg_hist = None
+    if len(pos_weight):
+        pos_hist = ax.hist(pos_weight, bins=100, range=[0, 1], alpha=.7, label=labels[1], color='#B22222',
+                           weights=true_weights
+                           )[0]
+    if len(neg_weights):
+        neg_hist = ax.hist(neg_weights, bins=100, range=[0, 1], alpha=.8, label=labels[2], color='#4169E1',
+                           weights=fake_weights
+                           )[0]
 
     if suffix is None:
         suffix = "/"
@@ -37,14 +43,26 @@ def plot_weights(pos_weight, neg_weights, labels, version, model="DFEI", channel
 
     ax.set_xlabel("NN weights [a.u.]")
     ax.set_ylabel("Normalized entries [a.u.]")
-    ax.legend()
-    ax.set_yscale("log")
+    if len(pos_weight) or len(neg_weights):
+        ax.legend()
+    positive_bins = []
+    if pos_hist is not None:
+        positive_bins.extend(pos_hist[pos_hist > 0])
+    if neg_hist is not None:
+        positive_bins.extend(neg_hist[neg_hist > 0])
+    if positive_bins:
+        ax.set_yscale("log")
     plt.savefig(f"{outdir}/{labels[0]}.pdf")
     plt.savefig(f"{outdir}/{labels[0]}.png")
     plt.close()
 
 
 def plot_roc_curve(sig, bkg, plt_label, version, model="DFEI", channel="inclusive", log_dir='lightning_logs'):
+    sig = np.asarray(sig)
+    bkg = np.asarray(bkg)
+    if len(sig) == 0 or len(bkg) == 0:
+        return
+
     pred = np.concatenate([sig, bkg])
     labels = np.concatenate([
         np.ones(len(sig)),

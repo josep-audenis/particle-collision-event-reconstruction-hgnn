@@ -42,7 +42,7 @@ if __name__ == "__main__":
     else:
         raise RuntimeError("No configuration file specified")
 
-    evaluate(None, module, tst_loader=tst_loader, chunkloader=chunkloader)
+    evaluate(None, module, tst_loader=tst_loader, chunkloader=chunkloader, configs=configs)
     # Creating loss plots and acc evaluation
     version = configs[configs["model"]]["cpt"]
     metric_path = f"{configs['log_dir']}/{configs['model']}/version_{version}/metrics.csv"

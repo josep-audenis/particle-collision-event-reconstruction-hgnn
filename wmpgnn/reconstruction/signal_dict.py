@@ -4,7 +4,7 @@ from particle import Particle
 def get_ref_signal(ref_signal):  # Here we can define them all
     splitted = ref_signal.split("_")
     if splitted[-1] == "inclusive":
-        return {}
+        return None
     else:
         ref_signal = f"{splitted[-2]}_{splitted[-1]}"
     if 'Bs_Jpsiphi' == ref_signal:

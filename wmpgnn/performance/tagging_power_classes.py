@@ -83,14 +83,30 @@ class TaggingPowerAnalyzer:
         Tuple[np.ndarray, np.ndarray],  # d_squared
     ]:
         """Calculate tagging efficiency and power metrics."""
+        num_right = np.asarray(num_right, dtype=float)
+        num_wrong = np.asarray(num_wrong, dtype=float)
+        num_unclassified = np.asarray(num_unclassified, dtype=float)
         total_classified = num_right + num_wrong
         total_events = total_classified + num_unclassified
+        if np.all(total_events == 0):
+            zeros = np.zeros_like(total_events, dtype=float)
+            return (zeros, zeros), (zeros, zeros), (zeros, zeros), (zeros, zeros)
 
-        efficiency = total_classified / total_events
-        defficiency = efficiency * np.sqrt(1 / total_classified + 1 / total_events)
+        efficiency = np.divide(total_classified, total_events, out=np.zeros_like(total_events, dtype=float),
+                               where=total_events != 0)
+        defficiency = np.zeros_like(efficiency, dtype=float)
+        eff_mask = (total_classified > 0) & (total_events > 0)
+        defficiency[eff_mask] = efficiency[eff_mask] * np.sqrt(
+            1 / total_classified[eff_mask] + 1 / total_events[eff_mask]
+        )
 
-        wrong_fraction = num_wrong / total_classified
-        dwrong_fraction = wrong_fraction * (1 / np.sqrt(num_wrong) + 1 / np.sqrt(total_classified))
+        wrong_fraction = np.divide(num_wrong, total_classified, out=np.zeros_like(total_classified, dtype=float),
+                                   where=total_classified != 0)
+        dwrong_fraction = np.zeros_like(wrong_fraction, dtype=float)
+        wrong_mask = (num_wrong > 0) & (total_classified > 0)
+        dwrong_fraction[wrong_mask] = wrong_fraction[wrong_mask] * (
+            1 / np.sqrt(num_wrong[wrong_mask]) + 1 / np.sqrt(total_classified[wrong_mask])
+        )
 
         power = efficiency * (1 - 2 * wrong_fraction) ** 2
         dp_deff = (1 - 2 * wrong_fraction) ** 2
@@ -151,6 +167,10 @@ class TaggingPowerAnalyzer:
 
     def compute_tagging_power_per_eta(self, df: pd.DataFrame) -> TaggingMetrics:
         """Compute tagging power across eta bins."""
+        if "eta" not in df.columns and {"ft_b_score", "ft_bbar_score"}.issubset(df.columns):
+            df = df.copy()
+            df["eta"] = 1 - np.max(df[["ft_b_score", "ft_bbar_score"]], axis=1)
+
         eta_num_right, eta_num_wrong, eta_num_unclassified = self._calculate_per_eta_bin(df, "eta")
         npvs_num_right, npvs_num_wrong, npvs_num_unclassified = self._calculate_per_eta_bin(df, "npvs")
 
@@ -184,10 +204,11 @@ class TaggingPowerAnalyzer:
         fig, ax = plt.subplots(figsize=(9, 6))
 
         # Plot underlying distribution
-        weights = np.ones_like(underlying_dist) / len(underlying_dist)
-        ax.hist(underlying_dist, bins=config.bins,
-                label=rf"Underlying {config.name} distribution",
-                color="grey", weights=weights / 2 * 100)
+        if len(underlying_dist) > 0:
+            weights = np.ones_like(underlying_dist) / len(underlying_dist)
+            ax.hist(underlying_dist, bins=config.bins,
+                    label=rf"Underlying {config.name} distribution",
+                    color="grey", weights=weights / 2 * 100)
 
         # Plot metrics
         ax.errorbar(config.centers, power[0], xerr=config.x_err, yerr=power[1],
@@ -240,12 +261,14 @@ class CorrectnessCalculator:
 
         num_correct = np.sum(pred_tag == true_tag)
         num_total = len(true_tag)
+        if num_total == 0:
+            return 0.0, 0.0
         ratio = num_correct / num_total
 
-        try:
+        if num_correct == 0:
+            uncertainty = 0.0
+        else:
             uncertainty = ratio * np.sqrt(1 / num_correct + 1 / num_total)
-        except:
-            uncertainty = -1
 
         return ratio, uncertainty
 
@@ -262,11 +285,15 @@ class CorrectnessCalculator:
             for label, mask in [("with_frag", has_frag), ("without_frag", ~has_frag)]:
                 num_correct = np.sum(pred_tag[mask] == true_tag[mask])
                 num_total = len(true_tag[mask])
-                ratio = num_correct / num_total
-                uncertainty = ratio * np.sqrt(1 / num_correct + 1 / num_total)
+                if num_total == 0:
+                    ratio = 0.0
+                    uncertainty = 0.0
+                else:
+                    ratio = num_correct / num_total
+                    uncertainty = 0.0 if num_correct == 0 else ratio * np.sqrt(1 / num_correct + 1 / num_total)
                 results[label] = (ratio, uncertainty)
         else:
-            results = {'with_frag': [-1, -1], "without_frag": [-1, -1]}
+            results = {'with_frag': [0.0, 0.0], "without_frag": [0.0, 0.0]}
 
         return results
 
@@ -274,7 +301,7 @@ class CorrectnessCalculator:
     def verify_charge_reconstruction(df: pd.DataFrame) -> Tuple[float, pd.DataFrame]:
         """Verify B flavor determination from summed charges."""
         if df.empty:
-            return -1, df.copy()
+            return 0.0, df.copy()
 
         pid_strings = np.array(df["final_pid"])
         true_flavor = np.sign(np.array(df["B_id"]))

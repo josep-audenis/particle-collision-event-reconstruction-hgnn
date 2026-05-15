@@ -67,10 +67,19 @@ def training(module, configs, trn_loader=None, val_loader=None, chunkloader=None
     return trainer
 
 
-def evaluate(trainer, module, tst_loader=None, chunkloader=None):
+def evaluate(trainer, module, tst_loader=None, chunkloader=None, configs=None):
     if trainer is None:
+        trainer_kwargs = {
+            "default_root_dir": f'lightning_logs/version_0',
+        }
+        if configs is not None:
+            trainer_kwargs.update(
+                accelerator="auto",
+                devices=1,
+                strategy="auto",
+            )
         trainer = Trainer(
-            default_root_dir=f'lightning_logs/version_0',  # save the eval stuff in the dir of the model
+            **trainer_kwargs,
         )
     if tst_loader is not None:
         trainer.test(module, dataloaders=tst_loader)
