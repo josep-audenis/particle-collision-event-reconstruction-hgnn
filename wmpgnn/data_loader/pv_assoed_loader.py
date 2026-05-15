@@ -143,7 +143,7 @@ def obtain_pv_model(configs):
 def get_trn_val_loaders(configs):
     data_dir = configs["settings"]["data_dir"]
     # default 8 -> 2 parallel loading data and forward pass, 4 each during association
-    ncpus =  int(configs["settings"]["ncpu"] / 4)
+    ncpus = max(1, int(configs["settings"]["ncpu"] / 4))
     nfiles = get_nfiles(configs["settings"])
 
     # Getting the PV model
@@ -201,7 +201,7 @@ def get_trn_val_loaders(configs):
 def get_tst_loader(configs, model="DFEI"):
     data_dir = configs["settings"]["data_dir"]
     # default 8 -> 2 parallel loading data and forward pass, 4 each during association
-    ncpus = int(configs["settings"]["ncpu"] / 4)
+    ncpus = max(1, int(configs["settings"]["ncpu"] / 4))
     nfiles = get_nfiles(configs["evaluate"])
 
     # Getting the PV model

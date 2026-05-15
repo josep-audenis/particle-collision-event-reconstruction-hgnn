@@ -31,6 +31,57 @@ Additional experiment configs live in `examples`.
 Before running, update each config path under `settings.data_dir`, plus any
 checkpoint or log path needed by your environment.
 
+## Cached Dataset Creation
+
+Training configs expect cached PyG graph files, not raw ROOT files. For example,
+`config_files/cache_50000/train_DFEI.yaml` points to:
+
+```text
+data/montecarlo/cache_50000/DFEI_LHCb_LHCbcollision_normed_pt_data/
+```
+
+That directory must contain one subdirectory per sample, with files named like:
+
+```text
+00353851_inclusive/
+  trn_data_*.pt.zst
+  val_data_*.pt.zst
+  tst_data_*.pt.zst
+  config.yaml
+```
+
+Create these cached files from raw LHCb Monte Carlo `*.mc.root` tuples with:
+
+```bash
+python scripts/cache_montecarlo.py \
+  --input-dir data/montecarlo/root \
+  --work-dir data/montecarlo_work/cache_50000 \
+  --cache-out data/montecarlo/cache_50000 \
+  --sample inclusive \
+  --identifier 00353851 \
+  --max-events 50000
+```
+
+The script runs three stages: raw `EvtTuple/Tracks` conversion, particle/relation
+ROOT construction, then compressed graph caching. It writes normalized LHCb DFEI
+graphs under:
+
+```text
+data/montecarlo/cache_50000/DFEI_LHCb_LHCbcollision_normed_pt_data/00353851_inclusive/
+```
+
+After caching, verify the trainer can see files:
+
+```bash
+find data/montecarlo/cache_50000 -type f -name 'trn_data_*' | head
+find data/montecarlo/cache_50000 -type f -name 'val_data_*' | head
+find data/montecarlo/cache_50000 -type f -name 'tst_data_*' | head
+```
+
+If training fails with `ValueError: min() arg is an empty sequence`, the loader
+found no `trn_data_*` files at `settings.data_dir/<sample>/`. Check
+`settings.data_dir`, `settings.sample`, and the cache command output path.
+
 ## Training
 
 Run from `config_files`:

@@ -1,0 +1,22 @@
+settings:
+  model_arch: "DFEI" # architecture of the model to evaluate
+  model: 0 # version number or full path
+  data_dir: "data/montecarlo/cache_100000/DFEI_LHCb_LHCbcollision_normed_pt_data/"
+  ncpu: 2  # NCPUs for data loader, full dataset limited to 8 for workers due to cpu mem constraints
+  calibration: false
+
+inference:
+  edge_prune_thr: 0.9  # Edge prune threshold during reco
+  node_prune_thr: 0.9  # Node prune threshold during reco
+  optimize_thr: false
+  # allows enabling disabling certain plot features
+  plt_nodes: true
+  plt_edges: true
+  plt_pvs: true
+
+evaluate:
+  sample: [ "00353851_inclusive" ]
+  
+  nfiles: [ 100 ]
+  over_write: "test" # argument to overwrite the output names to rerun safely the same sample: "" for no overwrite
+

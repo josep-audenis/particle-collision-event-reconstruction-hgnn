@@ -1,6 +1,6 @@
 settings:
   model_arch: "DFEI" # architecture of the model to evaluate
-  model: 4 # version number or full path
+  model: 0 # version number or full path
   data_dir: "data/montecarlo/cache_10000/DFEI_LHCb_LHCbcollision_normed_pt_data/"
   ncpu: 2  # NCPUs for data loader, full dataset limited to 8 for workers due to cpu mem constraints
   calibration: false

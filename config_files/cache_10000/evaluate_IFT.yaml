@@ -1,6 +1,6 @@
 settings:
   model_arch: "IFT" # architecture of the model to evaluate
-  model: 3 # version number or full path
+  model: 0 # version number or full path
   # dfei model for IFT, always specify for logging with clear information
   dfei_model: "None" # DFEI model which is used within IFT: "None", "DFEI_version_number"
   data_dir: "data/montecarlo/cache_10000/DFEI_LHCb_LHCbcollision_normed_pt_data/"

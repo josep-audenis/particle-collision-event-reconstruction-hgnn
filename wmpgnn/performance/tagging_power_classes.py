@@ -273,6 +273,9 @@ class CorrectnessCalculator:
     @staticmethod
     def verify_charge_reconstruction(df: pd.DataFrame) -> Tuple[float, pd.DataFrame]:
         """Verify B flavor determination from summed charges."""
+        if df.empty:
+            return -1, df.copy()
+
         pid_strings = np.array(df["final_pid"])
         true_flavor = np.sign(np.array(df["B_id"]))
 
@@ -284,7 +287,8 @@ class CorrectnessCalculator:
             except:
                 charge_matches.append(False)
 
+        charge_matches = np.asarray(charge_matches, dtype=bool)
         charge_correct_fraction = np.sum(charge_matches) / len(charge_matches)
-        charge_correct_df = df[charge_matches]
+        charge_correct_df = df.loc[charge_matches].copy()
 
         return charge_correct_fraction, charge_correct_df
