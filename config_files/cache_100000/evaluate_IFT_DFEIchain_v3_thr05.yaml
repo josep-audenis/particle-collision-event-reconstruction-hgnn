@@ -1,0 +1,19 @@
+settings:
+  model_arch: "IFT" # architecture of the model to evaluate
+  model: 3 # version number or full path
+  # dfei model for IFT, always specify for logging with clear information
+  dfei_model: 1 # DFEI model which is used within IFT: "None", "DFEI_version_number"
+  data_dir: "data/montecarlo/cache_100000/DFEI_LHCb_LHCbcollision_normed_pt_data/"
+  ncpu: 2  # NCPUs for data loader, full dataset limited to 8 for workers due to cpu mem constraints
+  calibration: false
+
+inference:
+  edge_prune_thr: 0.5  # Edge prune threshold during reco
+  node_prune_thr: 0.5  # Node prune threshold during reco
+
+
+evaluate:
+  sample: [ "00353851_inclusive" ]
+  
+  nfiles: [ 100 ]
+  over_write: "cache100000_dfeichain_thr05" # argument to overwrite the output names to rerun safely the same sample: "" for no overwrite
