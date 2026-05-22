@@ -41,6 +41,7 @@ evaluate:
 IFT:
   dfei_model: "None" # DFEI model which is used within IFT: "None", "DFEI_version_number"
   use_pid: "true" # Adding pid information in DFEI model: "None", "toutputsrue", "realistic"
+  lca_input: "argmax" # IFT track-track LCA input: "argmax" or "probabilities"
   cpt: None # Loading checkpoint to continue training: None, DFEI_version_number, "path.ckpt"
   node_types: [ 'tracks', 'pvs' ]  # Graph node settings
   edge_types: [ "tracks_tracks", "tracks_pvs" ]  # Graph edge settings
@@ -72,6 +73,7 @@ IFT:
     use_node_weights: True # MLP to infer a node weight, also necessary for node pruning
     use_edge_weights: True # MLP to infer an edge weight, also necessary for edge pruning
     weighted_pass: True # Whether to pass the weights, requires above
+    aggregation: "sum" # Edge-to-node aggregation: "sum", "mean", or "attention"
     MLP_forward:
       layers: [ -1, 128, 128, 16 ]
       norm: "graph_norm"

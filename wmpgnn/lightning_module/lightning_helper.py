@@ -59,6 +59,10 @@ def init_logs(configs, mode="train"):
     elif model == "IFT":
         if loss_config["FT"]:
             log["ft_loss"] = []
+            if mode == "train":
+                log["ft_auc"] = []
+                log["ft_tagging_power_proxy"] = []
+                log["ft_wrong_fraction_proxy"] = []
     if mode == "train":
         return log, log
     elif mode == "test":
@@ -101,12 +105,69 @@ def loss_logging(log, loss, configs, mode="DFEI"):
     return log
 
 
+def binary_auc_score(y_true, y_score):
+    y_true = torch.as_tensor(y_true, dtype=torch.int64).flatten()
+    y_score = torch.as_tensor(y_score, dtype=torch.float32).flatten()
+    pos = y_true == 1
+    neg = y_true == 0
+    n_pos = pos.sum()
+    n_neg = neg.sum()
+    if n_pos == 0 or n_neg == 0:
+        return torch.tensor(float("nan"))
+
+    order = torch.argsort(y_score)
+    sorted_scores = y_score[order]
+    ranks = torch.empty_like(y_score)
+    ranks[order] = torch.arange(1, y_score.numel() + 1, device=y_score.device, dtype=torch.float32)
+
+    unique_scores, inverse, counts = torch.unique_consecutive(
+        sorted_scores, return_inverse=True, return_counts=True
+    )
+    del unique_scores
+    if torch.any(counts > 1):
+        sorted_ranks = ranks[order]
+        for group_idx, count in enumerate(counts):
+            if count > 1:
+                group_mask = inverse == group_idx
+                sorted_ranks[group_mask] = sorted_ranks[group_mask].mean()
+        ranks[order] = sorted_ranks
+
+    rank_sum_pos = ranks[pos].sum()
+    return (rank_sum_pos - n_pos * (n_pos + 1) / 2) / (n_pos * n_neg)
+
+
+def ft_validation_metrics(logits, y_ft):
+    selbool = y_ft != 1
+    if selbool.sum() == 0:
+        nan = torch.tensor(float("nan"), device=logits.device)
+        return {"ft_auc": nan, "ft_tagging_power_proxy": nan, "ft_wrong_fraction_proxy": nan}
+
+    probs = torch.softmax(logits[selbool], dim=1)
+    labels = y_ft[selbool]
+    y_true = (labels == 2).to(torch.int64)
+    y_score = probs[:, 2]
+
+    auc = binary_auc_score(y_true.detach().cpu(), y_score.detach().cpu()).to(logits.device)
+    pred = torch.where(probs[:, 2] >= probs[:, 0], 2, 0)
+    wrong_fraction = (pred != labels).to(torch.float32).mean()
+    tagging_power_proxy = (1 - 2 * wrong_fraction) ** 2
+    return {
+        "ft_auc": auc,
+        "ft_tagging_power_proxy": tagging_power_proxy * 100,
+        "ft_wrong_fraction_proxy": wrong_fraction * 100,
+    }
+
+
 def epoch_end_loggable(log):
     # keys of the loss functions
     avg_log = {}
     loss_keys = [k for k in log if k.endswith('_loss')]
     for key in loss_keys:
         avg_log[key] = torch.tensor(log[key]).nanmean(dim=0)
+
+    metric_keys = [k for k in log if k in {"ft_auc", "ft_tagging_power_proxy", "ft_wrong_fraction_proxy"}]
+    for key in metric_keys:
+        avg_log[key] = torch.tensor(log[key], dtype=torch.float32).nanmean(dim=0)
 
     class_numbers = sorted(set(
         int(m.group(1)) for k in log if (m := re.search(r'LCA_class(\d+)_num', k))

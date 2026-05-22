@@ -14,19 +14,24 @@ def training(module, configs, trn_loader=None, val_loader=None, chunkloader=None
     # module = torch.compile(module)
     model = configs["model"]
 
-    monitoring_loss = "val_combined_loss" if model == "DFEI" else "val_ft_loss"
+    monitoring_metric = configs.get("settings", {}).get("monitor_metric")
+    if monitoring_metric is None:
+        monitoring_metric = "val_combined_loss" if model == "DFEI" else "val_ft_loss"
+    monitoring_mode = configs.get("settings", {}).get("monitor_mode")
+    if monitoring_mode is None:
+        monitoring_mode = "min" if monitoring_metric.endswith("loss") else "max"
 
     early_stopping = EarlyStopping(
-        monitor=monitoring_loss,
+        monitor=monitoring_metric,
         verbose=True,
-        mode="min",
+        mode=monitoring_mode,
         patience=15,
     )
 
     best_model_callback = ModelCheckpoint(
-        filename=f"best-{{epoch:02d}}-{{{monitoring_loss}:.3f}}",
-        monitor=monitoring_loss,
-        mode="min",
+        filename=f"best-{{epoch:02d}}-{{{monitoring_metric}:.3f}}",
+        monitor=monitoring_metric,
+        mode=monitoring_mode,
         save_top_k=15
     )
     last_epoch_callback = ModelCheckpoint(

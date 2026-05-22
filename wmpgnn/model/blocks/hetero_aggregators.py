@@ -1,7 +1,8 @@
 import pytorch_lightning as pl
 
 import torch
-from torch_scatter import scatter_add
+from torch_scatter import scatter_add, scatter_mean
+from torch_geometric.utils import softmax
 
 
 class HeteroEdgesToNodesAggregator(pl.LightningModule):
@@ -17,7 +18,7 @@ class HeteroEdgesToNodesAggregator(pl.LightningModule):
     _scatter_func : callable
         Function (e.g. `torch_scatter.scatter_add`) used to scatter/sum features.
     """
-    def __init__(self, use_sent_edges=False, weighted=True, scatter_func=scatter_add):
+    def __init__(self, use_sent_edges=False, weighted=True, scatter_func=scatter_add, aggregation="sum"):
         """
         Initializes the edges-to-nodes aggregator.
 
@@ -34,6 +35,9 @@ class HeteroEdgesToNodesAggregator(pl.LightningModule):
         super(HeteroEdgesToNodesAggregator, self).__init__()
         self._use_sent_edges = use_sent_edges
         self._weighted = weighted
+        if aggregation not in {"sum", "mean", "attention"}:
+            raise ValueError(f"Unknown edge-to-node aggregation: {aggregation}")
+        self._aggregation = aggregation
 
         self._scatter_func = scatter_func
 
@@ -64,10 +68,20 @@ class HeteroEdgesToNodesAggregator(pl.LightningModule):
         num_nodes = graph[edge_type[0]].x.shape[0] if self._use_sent_edges else graph[edge_type[2]].x.shape[0]
 
         out = graph[edge_type].edges.new_zeros(num_nodes, graph[edge_type].edges.shape[1])
-        if self._weighted:
-            output = scatter_add(graph[edge_type].edges * weight, indices.to(torch.int64), out=out, dim=0)
+        indices = indices.to(torch.int64)
+        if self._aggregation == "attention":
+            if self._weighted:
+                attention_weight = softmax(weight, indices, num_nodes=num_nodes)
+            else:
+                attention_weight = softmax(torch.ones_like(weight), indices, num_nodes=num_nodes)
+            output = scatter_add(graph[edge_type].edges * attention_weight, indices, out=out, dim=0)
+        elif self._aggregation == "mean":
+            messages = graph[edge_type].edges * weight if self._weighted else graph[edge_type].edges
+            output = scatter_mean(messages, indices, out=out, dim=0)
+        elif self._weighted:
+            output = scatter_add(graph[edge_type].edges * weight, indices, out=out, dim=0)
         else:
-            output = scatter_add(graph[edge_type].edges, indices.to(torch.int64), out=out, dim=0)
+            output = scatter_add(graph[edge_type].edges, indices, out=out, dim=0)
         return output
 
 class HeteroEdgesToGlobalsAggregator(pl.LightningModule):

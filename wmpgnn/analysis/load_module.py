@@ -80,6 +80,7 @@ def load_module(configs: Dict, pos_weights:Dict, dfei_model=None, mode="simulati
                 print("=" * 30)
                 module = DFEILightningModule.load_from_checkpoint(
                     checkpoint_path=bis_model,
+                    map_location="cpu",
                     model=model,
                     pos_weights=pos_weights,
                     optimizer_class=torch.optim.Adam,
@@ -104,6 +105,7 @@ def load_module(configs: Dict, pos_weights:Dict, dfei_model=None, mode="simulati
                 print("=" * 30)
                 module = IFTLightningModule.load_from_checkpoint(
                     checkpoint_path=bis_model,
+                    map_location="cpu",
                     model=model,
                     dfei_model=dfei_model,
                     pos_weights=pos_weights,
@@ -122,6 +124,7 @@ def load_module(configs: Dict, pos_weights:Dict, dfei_model=None, mode="simulati
             model = DFEI_HGNN(configs[model])
             module = DFEILightningModule.load_from_checkpoint(
                 checkpoint_path=bis_model,
+                map_location="cpu",
                 model=model,
                 pos_weights=pos_weights,
                 optimizer_class=torch.optim.Adam,
@@ -132,6 +135,7 @@ def load_module(configs: Dict, pos_weights:Dict, dfei_model=None, mode="simulati
             model = FT_HGNN(configs["IFT"])
             module = IFTLightningModuleData.load_from_checkpoint(
                 checkpoint_path=bis_model,
+                map_location="cpu",
                 model=model,
                 dfei_model=dfei_model,
                 configs=configs,

@@ -15,6 +15,7 @@ class HeteroNodeBlock(pl.LightningModule):
         self._use_receiver_edges = use_receiver_edges
         self._use_globals = use_globals
         self._use_nodes = use_nodes
+        self._aggregation = config.get("aggregation", "sum")
         self._node_types = node_types
         # self._node_types.remove('globals')
         self._edge_types = edge_types
@@ -30,10 +31,16 @@ class HeteroNodeBlock(pl.LightningModule):
             self._node_models[node_type] = create_mlp(config)
 
         if self._use_receiver_edges:
-            self._received_edges_aggregator = HeteroEdgesToNodesAggregator(weighted=weighted_mp)
-        self._received_edges_aggregator = HeteroEdgesToNodesAggregator(weighted=weighted_mp)
+            self._received_edges_aggregator = HeteroEdgesToNodesAggregator(
+                weighted=weighted_mp, aggregation=self._aggregation
+            )
+        self._received_edges_aggregator = HeteroEdgesToNodesAggregator(
+            weighted=weighted_mp, aggregation=self._aggregation
+        )
         if self._use_sender_edges:
-            self._sent_edges_aggregator = HeteroEdgesToNodesAggregator(use_sent_edges=True, weighted=weighted_mp)
+            self._sent_edges_aggregator = HeteroEdgesToNodesAggregator(
+                use_sent_edges=True, weighted=weighted_mp, aggregation=self._aggregation
+            )
         self._node_models_model_dict = torch.nn.ModuleDict({str(i): j for i, j in self._node_models.items()})
 
     def forward(self, graph, edge_weights):

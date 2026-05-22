@@ -27,6 +27,8 @@ def parse_ft(path: Path) -> dict[str, str]:
         "wrong_fraction": r"Wrong fraction\s+:\s+\(([^)]+)\)%",
         "epsilon": r"Epsilon\s+:\s+\(([^)]+)\)%",
         "dsquared": r"Dsquared\s+:\s+\(([^)]+)\)%",
+        "auc": r"AUC\s+:\s+([0-9.]+|nan)",
+        "loss": r"Loss\s+:\s+([0-9.]+|nan)",
     }.items():
         match = re.search(pattern, text)
         out[key] = match.group(1) if match else ""
@@ -64,3 +66,5 @@ for name, root, suffix in CASES:
     print(f"wrong_fraction={ft['wrong_fraction']}")
     print(f"epsilon={ft['epsilon']}")
     print(f"dsquared={ft['dsquared']}")
+    print(f"auc={ft['auc']}")
+    print(f"loss={ft['loss']}")

@@ -176,10 +176,19 @@ def run_support_script(script_dir: Path, script: str, args: list[str]) -> None:
     subprocess.run(cmd, cwd=script_dir, check=True)
 
 
+def generated_sample_name(generated: Path) -> str:
+    stem = generated.stem
+    prefix = "GeneratedParticles_"
+    if not stem.startswith(prefix):
+        raise ValueError(f"Unexpected generated particle filename: {generated.name}")
+    sample_and_range = stem[len(prefix):]
+    return sample_and_range.rsplit("_", 2)[0]
+
+
 def build_relations(generated_files: list[Path], work_dir: Path, identifier: str, overwrite: bool) -> list[Path]:
     relation_files: list[Path] = []
     for generated in generated_files:
-        sample = generated.name.split("_")[1]
+        sample = generated_sample_name(generated)
         out_dir = work_dir / "DFEI_LHCb_particles_relations" / f"{identifier}_{sample}"
         stem = generated.stem
         start, end = stem.rsplit("_", 2)[1:]
@@ -238,6 +247,7 @@ def cache_graphs(
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input-dir", type=Path, default=REPO_ROOT / "data" / "montecarlo")
+    parser.add_argument("--input-glob", default="*.mc.root", help="Input ROOT glob relative to input-dir.")
     parser.add_argument("--work-dir", type=Path, default=REPO_ROOT / "data" / "montecarlo_work")
     parser.add_argument("--cache-out", type=Path, default=REPO_ROOT / "data" / "cached_montecarlo")
     parser.add_argument("--sample", default="inclusive")
@@ -268,9 +278,9 @@ def main() -> None:
     args.work_dir = args.work_dir.resolve()
     args.cache_out = args.cache_out.resolve()
 
-    mc_files = sorted(args.input_dir.glob("*.mc.root"))
+    mc_files = sorted(args.input_dir.glob(args.input_glob))
     if not mc_files:
-        raise FileNotFoundError(f"No *.mc.root files found in {args.input_dir}")
+        raise FileNotFoundError(f"No files matching {args.input_glob!r} found in {args.input_dir}")
 
     args.work_dir.mkdir(parents=True, exist_ok=True)
     args.cache_out.mkdir(parents=True, exist_ok=True)

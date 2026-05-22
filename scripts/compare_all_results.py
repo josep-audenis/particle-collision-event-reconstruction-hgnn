@@ -15,6 +15,12 @@ IFT_CASES = [
     ("100k DFEI-chain edge=0.4 node=0.5", Path("LHCb_logs/IFT/version_3"), "__cache100000_dfeichain_e04_n05"),
     ("100k DFEI-chain edge=0.6 node=0.5", Path("LHCb_logs/IFT/version_3"), "__cache100000_dfeichain_e06_n05"),
     ("100k DFEI-chain edge=0.5 node=0.6", Path("LHCb_logs/IFT/version_3"), "__cache100000_dfeichain_e05_n06"),
+    ("100k DFEI-chain trained edge=0.4 node=0.5", Path("LHCb_logs/IFT/version_4"), "__cache100000_dfeichain_trained_e04_n05"),
+    ("100k DFEI-chain trained edge=0.4 node=0.4", Path("LHCb_logs/IFT/version_4"), "__cache100000_dfeichain_trained_e04_n04"),
+    ("100k DFEI-chain trained edge=0.3 node=0.5", Path("LHCb_logs/IFT/version_4"), "__cache100000_dfeichain_trained_e03_n05"),
+    ("100k DFEI-chain trained edge=0.4 node=0.5 repeat", Path("LHCb_logs/IFT/version_4"), "__cache100000_dfeichain_trained_e04_n05_repeat"),
+    ("100k DFEI-chain trained edge=0.5 node=0.5", Path("LHCb_logs/IFT/version_4"), "__cache100000_dfeichain_trained_e05_n05"),
+    ("100k DFEI-chain trained edge=0.4 node=0.6", Path("LHCb_logs/IFT/version_4"), "__cache100000_dfeichain_trained_e04_n06"),
 ]
 
 DFEI_CASES = [
@@ -32,6 +38,8 @@ def parse_ft(path: Path) -> dict[str, str]:
         "wrong_fraction": r"Wrong fraction\s+:\s+\(([^)]+)\)%",
         "epsilon": r"Epsilon\s+:\s+\(([^)]+)\)%",
         "dsquared": r"Dsquared\s+:\s+\(([^)]+)\)%",
+        "auc": r"AUC\s+:\s+([0-9.]+|nan)",
+        "loss": r"Loss\s+:\s+([0-9.]+|nan)",
     }.items():
         match = re.search(pattern, text)
         out[key] = match.group(1) if match else ""
@@ -94,5 +102,6 @@ for name, root, suffix in IFT_CASES:
         f"perfect={s['perfect']:.4f} all={s['all']:.4f} noneiso={s['noneiso']:.4f} "
         f"part={s['part']:.4f} notfound={s['notfound']:.4f} "
         f"tagging_power={ft['tagging_power']} wrong_fraction={ft['wrong_fraction']} "
-        f"epsilon={ft['epsilon']} ft_nan={ft['nan_count']} neg_bkg={s['neg_bkg']}"
+        f"epsilon={ft['epsilon']} auc={ft['auc']} loss={ft['loss']} "
+        f"ft_nan={ft['nan_count']} neg_bkg={s['neg_bkg']}"
     )

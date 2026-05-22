@@ -28,9 +28,6 @@ def build_norm_df(df):
     return stats
 
 def obtain_normalization(file, configs, force_recalculation=False):
-    # Obtain the normalization from inclusive decays
-    indir = os.path.dirname(os.path.dirname(file))
-    indir = glob.glob(f"{indir}/*inclusive")[0]
     part_file = os.path.basename(file)
     rel_file = part_file.replace("particles", "relations")
 
@@ -62,6 +59,17 @@ def obtain_normalization(file, configs, force_recalculation=False):
         edge_features = configs["edge_features"]
 
     """Here we need to read in inclusive decay files to obtain normalization information"""
+    # Obtain the normalization from inclusive decays
+    indir = os.path.dirname(os.path.dirname(file))
+    inclusive_dirs = glob.glob(f"{indir}/*inclusive")
+    if not inclusive_dirs:
+        missing = sorted(set(node_features + edge_features))
+        raise FileNotFoundError(
+            f"Missing inclusive normalization source for condition {condition}. "
+            f"Could not find {indir}/*inclusive and cached stats lack: {missing}"
+        )
+    indir = inclusive_dirs[0]
+
     print("Obtaining normalization information")
     part_keys = get_keys(f"{indir}/{part_file}", "Particles")
     rel_keys = get_keys(f"{indir}/{rel_file}", "ParticleRelations")

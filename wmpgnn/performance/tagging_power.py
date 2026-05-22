@@ -1,6 +1,14 @@
 import os
 
+import numpy as np
 import pandas as pd
+
+try:
+    from sklearn.metrics import log_loss as sklearn_log_loss
+    from sklearn.metrics import roc_auc_score as sklearn_roc_auc_score
+except ImportError:
+    sklearn_log_loss = None
+    sklearn_roc_auc_score = None
 
 try:
     from wmpgnn.performance.tagging_power_classes import *
@@ -26,6 +34,91 @@ def write_correctness_ratio(file, ratio, frag_results=None):
                    f"{frag_results['without_frag'][1] * 100:.2f})%\n")
 
 
+def compute_benchmark_metrics(df: pd.DataFrame) -> dict[str, float | int]:
+    """Compute DeepSets-comparable IFT classification metrics on B-candidate rows."""
+    required = {"B_id", "ft_b_score", "ft_bbar_score"}
+    missing = required - set(df.columns)
+    if missing:
+        raise ValueError(f"Missing benchmark metric columns: {sorted(missing)}")
+
+    metric_df = df.loc[:, ["B_id", "ft_b_score", "ft_bbar_score"]].dropna()
+    metric_df = metric_df[np.sign(metric_df["B_id"]) != 0]
+    if metric_df.empty:
+        return {"rows": 0, "auc": np.nan, "loss": np.nan}
+
+    y_true = (np.sign(metric_df["B_id"]) == 1).astype(int).to_numpy()
+    y_score = metric_df["ft_bbar_score"].to_numpy(dtype=float)
+    y_prob = metric_df[["ft_b_score", "ft_bbar_score"]].to_numpy(dtype=float)
+    y_prob = np.clip(y_prob, 1e-12, 1.0)
+    y_prob = y_prob / y_prob.sum(axis=1, keepdims=True)
+
+    auc = np.nan
+    if np.unique(y_true).size == 2:
+        if sklearn_roc_auc_score is not None:
+            auc = sklearn_roc_auc_score(y_true, y_score)
+        else:
+            auc = binary_auc(y_true, y_score)
+
+    return {
+        "rows": int(len(metric_df)),
+        "auc": float(auc),
+        "loss": float(cross_entropy_loss(y_true, y_prob)),
+    }
+
+
+def binary_auc(y_true: np.ndarray, y_score: np.ndarray) -> float:
+    order = np.argsort(y_score)
+    ranks = np.empty_like(order, dtype=float)
+    ranks[order] = np.arange(1, len(y_score) + 1)
+
+    sorted_scores = y_score[order]
+    unique_scores, starts, counts = np.unique(sorted_scores, return_index=True, return_counts=True)
+    del unique_scores
+    for start, count in zip(starts, counts):
+        if count > 1:
+            tied = order[start:start + count]
+            ranks[tied] = ranks[tied].mean()
+
+    n_pos = np.sum(y_true == 1)
+    n_neg = np.sum(y_true == 0)
+    if n_pos == 0 or n_neg == 0:
+        return np.nan
+
+    rank_sum_pos = np.sum(ranks[y_true == 1])
+    return (rank_sum_pos - n_pos * (n_pos + 1) / 2) / (n_pos * n_neg)
+
+
+def cross_entropy_loss(y_true: np.ndarray, y_prob: np.ndarray) -> float:
+    if sklearn_log_loss is not None:
+        return sklearn_log_loss(y_true, y_prob, labels=[0, 1])
+    return -float(np.mean(np.log(y_prob[np.arange(len(y_true)), y_true])))
+
+
+def write_benchmark_metrics(file, metrics: dict[str, float | int], label: str):
+    file.write(f"{'=' * 20}\n")
+    file.write(f"{label}\n")
+    file.write(f"Rows           : {metrics['rows']}\n")
+    file.write(f"AUC            : {metrics['auc']:.5f}\n")
+    file.write(f"Loss           : {metrics['loss']:.5f}\n")
+
+
+def write_selection_metadata(file, raw_df: pd.DataFrame, processed_df: pd.DataFrame, full_df: pd.DataFrame):
+    raw_signal = raw_df[raw_df["SigMatch"] == 1] if "SigMatch" in raw_df else raw_df.iloc[0:0]
+    raw_reco_signal = raw_signal[raw_signal["AllParticles"] == 1] if "AllParticles" in raw_signal else raw_signal
+    file.write(f"{'=' * 20}\n")
+    file.write("Selection and denominator metadata\n")
+    file.write("Metric scope    : reconstructed B-candidate rows after EventReconstruction output\n")
+    file.write("TP denominator  : rows in each reported subset, not all generated events\n")
+    file.write("AUC/Loss labels : sign(B_id), with positive class mapped to ft_bbar_score\n")
+    file.write("Calibration     : uncalibrated model scores; eta = 1 - max(ft_b_score, ft_bbar_score)\n")
+    file.write(f"Input rows      : {len(raw_df)}\n")
+    file.write(f"Input events    : {raw_df['EventNumber'].nunique() if 'EventNumber' in raw_df else 0}\n")
+    file.write(f"Signal rows     : {len(raw_signal)}\n")
+    file.write(f"Signal AllParticles rows: {len(raw_reco_signal)}\n")
+    file.write(f"Processed rows  : {len(processed_df)}\n")
+    file.write(f"Full metric rows: {len(full_df)}\n")
+
+
 def analyze_tagging_power(df: pd.DataFrame, version: str, signal: str, log_dir: str = "lightning_logs"):
     """
     Main function for tagging power values and plots
@@ -41,6 +134,7 @@ def analyze_tagging_power(df: pd.DataFrame, version: str, signal: str, log_dir: 
     calc = CorrectnessCalculator()
 
     # Prepare data
+    raw_df = df.copy()
     df = analyzer.process_df(df)
     event_ids, event_counts = classifier.get_event_counts(df)
 
@@ -53,11 +147,14 @@ def analyze_tagging_power(df: pd.DataFrame, version: str, signal: str, log_dir: 
 
         """1. Full tagging power (all signal-matched events)"""
         full_df = df[df["SigMatch"] == 1]
+        write_selection_metadata(f, raw_df, df, full_df)
         metrics_full = analyzer.compute_tagging_power_per_eta(full_df)
         analyzer.plot_tagging_power(metrics_full, full_df["eta"], "eta", "tagging_power")
         analyzer.plot_tagging_power(metrics_full, full_df["num_pvs"], "npvs", "npvs_tagging_power")
         label = f"Tagging performance for {signal} ({len(full_df)}):"
         write_tagging_power(f, metrics_full, label)
+        benchmark_metrics = compute_benchmark_metrics(full_df)
+        write_benchmark_metrics(f, benchmark_metrics, "DeepSets-comparable metrics on full signal-matched subset:")
 
         """2. Single B events"""
         single_b_df = classifier.filter_n_b_events(df, 1, event_ids, event_counts)

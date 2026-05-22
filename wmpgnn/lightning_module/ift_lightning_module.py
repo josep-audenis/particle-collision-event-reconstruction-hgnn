@@ -39,6 +39,7 @@ class IFTLightningModule(L.LightningModule):
                 param.requires_grad = False
         self.dfei_use_pid = configs['DFEI']["use_pid"] if "DFEI" in configs else "None"
         self.ift_use_pid = configs["IFT"]["use_pid"]
+        self.lca_input = configs["IFT"].get("lca_input", "argmax")
 
         self.optimizer_class = optimizer_class
         self.optimizer_params = optimizer_params
@@ -84,8 +85,14 @@ class IFTLightningModule(L.LightningModule):
         else:  # using truth information
             lca = torch.nn.functional.one_hot(batch[("tracks", "tracks")].y.to(torch.long), num_classes=4).to(
                 torch.float32)
+        if self.lca_input == "argmax":
+            lca_features = torch.argmax(lca, dim=1).unsqueeze(1).to(batch[("tracks", "tracks")].edges.dtype)
+        elif self.lca_input == "probabilities":
+            lca_features = torch.softmax(lca, dim=1)
+        else:
+            raise ValueError(f"Unknown IFT lca_input: {self.lca_input}")
         lca_score = torch.argmax(lca, dim=1).unsqueeze(1)
-        batch[("tracks", "tracks")].edges = torch.cat([batch[("tracks", "tracks")].edges, lca_score], dim=1)
+        batch[("tracks", "tracks")].edges = torch.cat([batch[("tracks", "tracks")].edges, lca_features], dim=1)
 
         # Adding pid information to nodes, here again realistic or not
         if self.ift_use_pid == "realistic":
@@ -101,6 +108,10 @@ class IFTLightningModule(L.LightningModule):
         selbool = y_ft != 1  # this is actually a good question if one should use ft truth or the predicted from DFEI
         ift_loss = self.ft_criterion(outputs_ft["tracks"].x[selbool], y_ft[selbool])
         loss["ft_nodes"] += ift_loss
+        if mode == "val":
+            val_metrics = ft_validation_metrics(outputs_ft["tracks"].x, y_ft)
+            for key, value in val_metrics.items():
+                log[key].append(value.detach().cpu().item())
 
         # Starting evaluating the performance
         if mode == "test":
