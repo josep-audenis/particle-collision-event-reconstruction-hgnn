@@ -38,14 +38,14 @@ def adjust_ift_configs(_configs: Dict) -> Dict:
 
 
 def adjust_config_training(_configs: Dict) -> Dict:
-    # Obtaining the model_to be trained
+
     _configs = training_model_name(_configs)
-    # Obtaining log_dir
+
     _configs = obtain_log_dir(_configs)
 
     _configs["settings"].setdefault("calibration", False)
 
-    # Check if weights need to be calculated, to save a bit of performance later on
+
     _configs["inference"]["get_weights"] = any(
         _configs["inference"].get(key)
         for key in _configs["inference"]
@@ -75,23 +75,23 @@ def update_nested_dict(target, source):
     return target
 
 def adjust_config_evaluation(_configs: Dict) -> Dict:
-    # Obtaining the model_to be trained
+
     _configs["model"] = _configs["settings"]["model_arch"]
     print("Training model", _configs["model"])
     print("=" * 15)
 
-    # Obtaining log_dir
+
     _configs = obtain_log_dir(_configs)
 
     _configs["settings"].setdefault("calibration", False)
 
-    # Obtaining the model information of the model to be evaluated
+
     hparams_file = f"{_configs['log_dir']}/{_configs['model']}/version_{_configs['settings']['model']}/input_config.yaml"
     with open(hparams_file, "r") as file:
         hparams = yaml.safe_load(file)
-    # overwriting settings from evaluation
+
     hparams = update_nested_dict(hparams, _configs)
-    hparams[_configs["model"]]["cpt"] = _configs["settings"]["model"] # loading from cpt for eval
+    hparams[_configs["model"]]["cpt"] = _configs["settings"]["model"]
     if _configs["model"] == "DFEI":
         hparams = adjust_dfei_configs(hparams)
     elif _configs["model"] == "IFT":

@@ -30,11 +30,11 @@ def get_evt_df(col_idx_list: list, col_offset_map: dict, event: int, *dfs: pd.Da
             result_df['ExpandedEventNumber'] = event
             PV_offset = result_df["EventNumber"].map(col_offset_map)
 
-            # Direct addition for always-valid indices
+
             for key in ["ParticleIndex", "MotherIndex"]:
                 result_df[f"Expanded{key}"] = result_df[key] + PV_offset
 
-            # Conditional addition for nullable indices
+
             for key in ["fragPartnerIndex", "PrimaryHeavyHadronIndex"]:
                 result_df[f"Expanded{key}"] = np.where(
                     result_df[key] != -1,
@@ -47,16 +47,16 @@ def get_evt_df(col_idx_list: list, col_offset_map: dict, event: int, *dfs: pd.Da
 
 
 def get_evt_df_fullsim(event: int, *dfs: pd.DataFrame):
-    # optimized for LHCb sim as they are usually smaller files and don't need much processing
+
     res = []
     for df in dfs:
         result_df = df.loc[df["EventNumber"] == event].copy()
-        # Just copying the normal to expanded so i dont have to change it downstream
+
         result_df['ExpandedEventNumber'] = result_df["EventNumber"]
         for key in ["ParticleIndex", "MotherIndex"]:
             result_df[f"Expanded{key}"] = result_df[key]
-        # In principal one can also add here the frag one but they dont exist in full sim yet
-        for key in ["PrimaryHeavyHadronIndex"]: # fragPartnerIndex
+
+        for key in ["PrimaryHeavyHadronIndex"]:
             result_df[f"Expanded{key}"] = np.where(
                 result_df[key] != -1,
                 result_df[key],
@@ -68,7 +68,7 @@ def get_evt_df_fullsim(event: int, *dfs: pd.DataFrame):
     true_pvs, idx = np.unique(combined[["xPV", "yPV", "zPV"]], axis=0, return_index=True)
     reco_pvs, idx = np.unique(combined[["xPV_reco", "yPV_reco", "zPV_reco"]], axis=0, return_index=True)
 
-    # intermediate dont have any pv but default of -1, which are removed here
+
     true_pvs = true_pvs[~np.all(true_pvs == -1, axis=1)]
     reco_pvs = reco_pvs[~np.all(reco_pvs == -1, axis=1)]
     return true_pvs, reco_pvs, tuple(res)
@@ -109,11 +109,11 @@ def process_finals(stable_charged_df, unstable_from_hh_df, heavy_hadron_df, heav
         evt_number = np.unique(stable_charged_df['EventNumber'])
         print('Mother obtaining failed at event ', evt_number)
         return 0
-    # here we directly adjust the stable and need to adjust the heavy hadron indices
-    # adjust stable charged
-    # promote unstable_hh to hh_df -> Shouldnt be used anymore if it is merged
-    # change hh indicies but they arent used anymore if not merged
-    # If from a topological perspective a particle does not have a mother. remove them from ExpandedPrimaryHeavyHadronIndex
+
+
+
+
+
     for particle, head in decay_dict["topo_ancestors_per_particle"].items():
         if not head:
             stable_charged_df.loc[
@@ -121,7 +121,7 @@ def process_finals(stable_charged_df, unstable_from_hh_df, heavy_hadron_df, heav
                 'ExpandedPrimaryHeavyHadronIndex'
             ] = -1
 
-    # stable_charged_df[stable_charged_df["ExpandedPrimaryHeavyHadronIndex"] != -1]
+
     stable_charged_df = compute_mother_PID(stable_charged_df, unstable_from_hh_df, heavy_hadron_df,
                                            heavy_hadron_indices)
     stable_charged_df = compute_pv_asso(stable_charged_df, true_pvs, "true")

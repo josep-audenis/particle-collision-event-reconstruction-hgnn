@@ -1,13 +1,10 @@
 #!/bin/bash
-# Testing the training script for DFEI
 
-# Color codes for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Function to run command and report status
 run_config() {
     local script=$1
     local config=$2
@@ -23,7 +20,6 @@ run_config() {
     fi
 }
 
-# Track failures
 FAILED_CONFIGS=()
 SUCCESSFUL_CONFIGS=()
 
@@ -32,7 +28,6 @@ echo "Starting experiment runs..."
 echo "========================================"
 echo ""
 
-# Testing the training script for DFEI
 echo "=== DFEI Training ==="
 configs=(
     "train_DFEI_b_daughters_only.yaml"
@@ -51,7 +46,6 @@ for config in "${configs[@]}"; do
     fi
 done
 
-# Testing the evaluation script for DFEI
 echo "=== DFEI Evaluation ==="
 if run_config "../wmpgnn/analysis/evaluate.py" "evaluate_DFEI.yaml"; then
     SUCCESSFUL_CONFIGS+=("evaluate_DFEI.yaml")
@@ -59,7 +53,6 @@ else
     FAILED_CONFIGS+=("evaluate_DFEI.yaml")
 fi
 
-# Testing the training script for IFT
 echo "=== IFT Training ==="
 configs=(
     "train_IFT_PVassoTrue.yaml"
@@ -76,7 +69,6 @@ for config in "${configs[@]}"; do
     fi
 done
 
-# Summary
 echo "========================================"
 echo "Execution Summary"
 echo "========================================"

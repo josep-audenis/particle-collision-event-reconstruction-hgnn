@@ -19,7 +19,7 @@ def get_hetero_weight(_data, _configs):
             raw_weights["LCA"] += torch.bincount(y, minlength=4).to(torch.int64)
 
         if config.get("node_prune_weights"):
-            selbool = evt["tracks"].ft == 1  # 0 = bbar, 1 = background, 2 = b
+            selbool = evt["tracks"].ft == 1
             raw_weights["pos_nodes"] += torch.sum(~selbool).to(torch.int64)
             raw_weights["neg_nodes"] += torch.sum(selbool).to(torch.int64)
 
@@ -35,7 +35,7 @@ def get_hetero_weight(_data, _configs):
 
         if config.get("FT_weights"):
             y = evt['tracks'].ft.to(torch.int64)
-            if _configs["settings"]["graph_mode"] == "true":  # Consider frag nodes later on
+            if _configs["settings"]["graph_mode"] == "true":
                 selbool = evt["tracks"].ft != 1
                 y = y[selbool].to(torch.int64)
             raw_weights["FT"] += torch.bincount(y, minlength=3)

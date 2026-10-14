@@ -5,13 +5,13 @@ from create_pid_response import *
 
 
 def get_derive_base_quant(to_derive):
-    # Get the base quantity, for example if we want to have pt we need px and py where px and py are the base quantity
-    _to_derive = {k: v for k, v in to_derive.items()}  # copy since we dont want to change in place
+
+    _to_derive = {k: v for k, v in to_derive.items()}
     part_base_quant = []
     rel_base_quant = []
     """track node features"""
     if _to_derive['part']:
-        if any("real_prob" in p for p in _to_derive["part"]):  # in principal one doesnt need it but looks better :)
+        if any("real_prob" in p for p in _to_derive["part"]):
             part_base_quant.append(["px_reco", "py_reco", "pz_reco"])
             part_base_quant.append([f"Prob_{x.split('_')[-1]}" for x in _to_derive["part"] if "real_prob" in x])
             _to_derive["part"] = [x for x in _to_derive["part"] if "real_prob" not in x]
@@ -25,7 +25,7 @@ def get_derive_base_quant(to_derive):
             rel_base_quant.append(["DOCA_reco"])
             _to_derive["rel"] = [x for x in _to_derive["rel"] if "DOCA_reco" not in x]
 
-    # Case some are remaining print and set pdb trace
+
     if _to_derive['part'] or _to_derive['rel']:
         print("Missing particle feature definition:", _to_derive['part'])
         print("Missing relation feature definition:", _to_derive['rel'])
@@ -37,7 +37,7 @@ def derive_quantities(stable_part, rel_data, to_derive):
     print("=" * 15)
     print("Deriving additional quantities")
     if to_derive['part']:
-        if any("real_prob" in p for p in to_derive["part"]):  # realistic pid response for pythia sim
+        if any("real_prob" in p for p in to_derive["part"]):
             print("Deriving realistic probability through sampling")
             p_reco = np.sqrt(
                 stable_part["px_reco"] ** 2 + stable_part["py_reco"] ** 2 + stable_part["pz_reco"] ** 2).values
@@ -159,29 +159,29 @@ def calculate_log_associated_ip(data, reco_suffix: str = ""):
     return log_ip
 
 
-def find_row_indices(t1, t2):  # decapricated
-    # Expand t1 and t2 to compare every row in t1 with every row in t2
-    t1_expanded = t1.unsqueeze(1)  # Shape (n1, 1, cols)
-    t2_expanded = t2.unsqueeze(0)  # Shape (1, n2, cols)
+def find_row_indices(t1, t2):
 
-    # Check for equality along the last dimension
-    matches = (t1_expanded == t2_expanded).all(dim=2)  # Shape (n1, n2)
+    t1_expanded = t1.unsqueeze(1)
+    t2_expanded = t2.unsqueeze(0)
 
-    # Convert matches to an appropriate type for argmax
-    matches_int = matches.int()  # Convert to int
 
-    # Find the indices in t2 for each row in t1
+    matches = (t1_expanded == t2_expanded).all(dim=2)
+
+
+    matches_int = matches.int()
+
+
 
     indices = torch.argmax(matches_int, dim=1)
 
-    # Verify matches exist (if no match, indices would be arbitrary)
-    valid = matches.any(dim=1)
-    indices[~valid] = -1  # Set unmatched rows to -1
 
-    # Number of classes (largest value in the tensor + 1)
+    valid = matches.any(dim=1)
+    indices[~valid] = -1
+
+
     num_classes = t2.shape[0]
 
-    # One-hot encoding
+
     one_hot_encoded = torch.nn.functional.one_hot(indices, num_classes=num_classes)
 
     return indices, one_hot_encoded
@@ -189,7 +189,7 @@ def find_row_indices(t1, t2):  # decapricated
 
 def match_pvs_by_distance(df):
     pvs_true = np.unique(df[['xPV', 'yPV', 'zPV']], axis=0)
-    pvs_true = pvs_true[~(pvs_true == 0).all(axis=1)]  # Removing the true pv from ghosts which are all 0
+    pvs_true = pvs_true[~(pvs_true == 0).all(axis=1)]
     pvs_reco = np.unique(df[['xPV_reco', 'yPV_reco', 'zPV_reco']], axis=0)
 
     pvs_true_expanded = pvs_true[:, np.newaxis, :]
@@ -202,7 +202,7 @@ def match_pvs_by_distance(df):
 
     mapping = {}
     for i in range(len(pvs_true)):
-        if distances[i] <= 2:  # Only map if distance is within threshold
+        if distances[i] <= 2:
             mapping[tuple(pvs_true[i])] = indices[i]
         else:
             mapping[tuple(pvs_true[i])] = -1
@@ -218,22 +218,22 @@ def match_pvs_by_distance(df):
 
 
 def calculate_ip(df, reco_suffix: str = "", log_ip: bool = True):
-    # Getting the unique reco pvs inside of the event
+
     pvs = torch.from_numpy(df[[f'xPV{reco_suffix}', f'yPV{reco_suffix}', f'zPV{reco_suffix}']].to_numpy())
     pvs = torch.unique(pvs, dim=0).to(torch.float32)
 
-    # Get the tracks prod position and momentum
+
     tracks_prod = df[[f'xProd{reco_suffix}', f'yProd{reco_suffix}', f'zProd{reco_suffix}']]
     tracks_p = df[[f'px{reco_suffix}', f'py{reco_suffix}', f'pz{reco_suffix}']]
 
-    # Expand to match the shape of pvs
+
     tracks_prod = torch.from_numpy(tracks_prod.to_numpy()).unsqueeze(1).repeat(1, pvs.shape[0], 1)
     tracks_p = torch.from_numpy(tracks_p.to_numpy()).unsqueeze(1).repeat(1, pvs.shape[0], 1)
 
     r = tracks_prod - pvs
     ips = torch.sqrt(
         torch.sum(r ** 2, dim=-1) - torch.sum(tracks_p * r, dim=-1) ** 2 / torch.sum(tracks_p ** 2, dim=-1))
-    ips[torch.isnan(ips)] = 0  # if something is negative in the sqrt it results in nan replacing it with 0
+    ips[torch.isnan(ips)] = 0
 
     if log_ip:
         ips = torch.log(ips + 1.e-6)

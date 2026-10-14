@@ -46,7 +46,7 @@ class LazyGraphDataset(Dataset):
                     sample_length += filtered_length
                     self.cumulative_sizes.append(total)
 
-                    # immediately combine weights
+
                     for key, value in weight_dict.items():
                         if key not in self.weights[sample]:
                             self.weights[sample][key] = value
@@ -94,26 +94,26 @@ class LazyGraphDataset(Dataset):
         return self.cumulative_sizes[-1] if self.cumulative_sizes else 0
 
     def __getitem__(self, idx):
-        # Find which file contains this index
+
         file_idx = 0
         for i, cumsum in enumerate(self.cumulative_sizes):
             if idx < cumsum:
                 file_idx = i
                 break
 
-        # Calculate local index within the file
+
         local_idx = idx if file_idx == 0 else idx - self.cumulative_sizes[file_idx - 1]
 
-        # Apply filtering and get the correct item
+
         filtered_data = self._load_dataset(self.file_paths[file_idx], mode="val")[0]
         item = filtered_data[local_idx]
 
-        # Apply model-specific processing
-        # add here pruning from pv asso and model for ft
+
+
         if self.model == "IFT":
             item["tracks"].x = torch.cat([item["tracks"].x, item["tracks"].pid], dim=1)
 
-        # Remove pid info, might be fine to keep
+
         if "pid" in item["tracks"]:
             del item["tracks"].pid
 
@@ -134,7 +134,7 @@ def get_trn_val_loaders(configs, model="DFEI"):
 
     start = time.time()
 
-    # Collect all file paths without loading data
+
     print("Training:")
     trn_path_set = {}
     for sample in samples:
@@ -157,14 +157,14 @@ def get_trn_val_loaders(configs, model="DFEI"):
     print(f"Validation dataset  : {len(val_dataset)}")
     print("=" * 30)
 
-    # Create DataLoaders with reduced num_workers to save memory
+
     num_workers = ncpus
 
     trn_loader = DataLoader(trn_dataset, batch_size=batch_size, num_workers=num_workers,
                             drop_last=True, shuffle=True, persistent_workers=True if num_workers > 0 else False,
                             pin_memory=False)
 
-    # Shuffle validation dataset
+
     generator = torch.Generator()
     shuffled_indices = torch.randperm(len(val_dataset), generator=generator).tolist()
     val_dataset_shuffled = Subset(val_dataset, shuffled_indices)
@@ -189,11 +189,11 @@ def get_tst_loaders(configs, model="DFEI"):
 
     tst_paths = sorted(glob.glob(f'{data_dir}/{sample}/tst_data_*'))[:nfiles]
 
-    # Create lazy test dataset
+
     tst_dataset = LazyGraphDataset(tst_paths, configs, "val", model)
     nevts["testing"][sample] = len(tst_dataset)
 
-    # Shuffle the dataset
+
     generator = torch.Generator()
     shuffled_indices = torch.randperm(len(tst_dataset), generator=generator).tolist()
     tst_dataset_shuffled = Subset(tst_dataset, shuffled_indices)

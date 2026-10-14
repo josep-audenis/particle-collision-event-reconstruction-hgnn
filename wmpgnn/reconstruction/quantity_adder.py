@@ -3,7 +3,7 @@ import numpy as np
 
 
 def get_asso_frag(sig_dict, graph, cluster):
-    # check if the frag exists if not just return it problem solved. yey
+
     if "frag_y" not in graph:
         return sig_dict
     res_dict = sig_dict
@@ -25,15 +25,15 @@ def get_asso_frag(sig_dict, graph, cluster):
 
 def get_pred_ft(sig_dict, graph, cluster, ft_score):
     res_dict = sig_dict
-    # Save combined b bbar score, save individual scores, save pid of final
+
     cluster_keys = cluster['node_keys']
     keys = graph['final_keys']
     b_daughters_mask = np.isin(keys, cluster_keys)
 
-    # Get the pid of the particles
+
     res_dict["final_pid"] = ','.join(str(x.item()) for x in graph["part_ids"][b_daughters_mask])
 
-    # Get the individual scores stored as strings
+
     ft_score = ft_score[b_daughters_mask].cpu()
     res_dict["final_b_score"] = ','.join(str(x.item()) for x in ft_score[:, :1].squeeze())
     res_dict["final_bbar_score"] = ','.join(str(x.item()) for x in ft_score[:, 2:].squeeze())
@@ -45,16 +45,16 @@ def get_pred_ft(sig_dict, graph, cluster, ft_score):
 
 def get_pv_asso(sig_dict, graph, cluster, pv_des):
     res_dict = sig_dict
-    # Get the key information of the cluster which is looked at
+
     cluster_keys = cluster['node_keys']
     keys = graph['final_keys']
     b_daughters_mask = np.isin(keys, cluster_keys)
 
-    # Get the individual scores stored as strings
+
     true_pv = pv_des["true"][b_daughters_mask]
     minIP_pv = pv_des["ip"][b_daughters_mask]
 
-    # Either per track level or on the full B system
+
     pred_pv = pv_des["pred"][b_daughters_mask]
     pred_pv_track = torch.argmax(pred_pv, dim=1)
     pred_pv_system = torch.argmax(torch.sum(pred_pv, dim=0))

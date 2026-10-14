@@ -1,7 +1,7 @@
 import torch
 
-# Just as a reminder both Jpsi, Phi, Kst have really short lifetime which can not be resolved thus are merged
-decay_prop = {  # Decay properties: True final mc id, lca score
+
+decay_prop = {
     "Bs_Jpsiphi": [
         torch.tensor([-13, 13, -321, 321]), torch.tensor([1, 1, 1, 1, 1, 1])
     ],
@@ -14,7 +14,7 @@ decay_prop = {  # Decay properties: True final mc id, lca score
 
 }
 
-# Translate pid name to mc numbering
+
 pid_dict = {
     "Prob_k": 321,
     "Prob_e": 11,

@@ -1,7 +1,7 @@
 from particle import Particle
 
 
-def get_ref_signal(ref_signal):  # Here we can define them all
+def get_ref_signal(ref_signal):
     splitted = ref_signal.split("_")
     if splitted[-1] == "inclusive":
         return None

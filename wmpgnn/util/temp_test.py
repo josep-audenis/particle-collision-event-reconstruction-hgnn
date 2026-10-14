@@ -1,11 +1,11 @@
-# probably rename to data_augmentation
+
 
 import torch
 import copy
 
 
 def find_components_bfs(edge_index):
-    # breadth first search
+
     edge_index = edge_index.numpy()
     all_nodes = set(edge_index[0]).union(set(edge_index[1]))
 
@@ -41,8 +41,8 @@ def find_components_bfs(edge_index):
 
 
 def adjust_data(configs, path, list_data):
-    # copy pi pid response to K in K* decay
-    # faking a pi pi or K K decay -> no pid information not selftagging except for kinematics
+
+
     if False and configs:
         for data in list_data:
             edges = torch.stack([data['truth_senders'], data['truth_receivers']])
@@ -56,27 +56,27 @@ def adjust_data(configs, path, list_data):
                 if torch.equal(final_states, torch.sort(bd_jpsikst).values) or torch.equal(final_states, torch.sort(
                         -1 * bd_jpsikst).values):
                     if torch.abs(data['truth_moth_ids'][edge_mask])[0].item() == 511:
-                        # replacing K with pi response
-                        # source_mask = torch.abs(data['truth_part_ids'][comp]) == 211
-                        # target_mask = torch.abs(data['truth_part_ids'][comp]) == 321
-                        # replacing pi with k response
+
+
+
+
                         source_mask = torch.abs(data['truth_part_ids'][comp]) == 321
                         target_mask = torch.abs(data['truth_part_ids'][comp]) == 211
 
-                        source = keys[source_mask].item()  # pion
+                        source = keys[source_mask].item()
                         source_bool = data['final_keys'] == source
-                        # source_x = data['tracks'].x[source_bool]
+
                         source_pid = data['tracks'].pid[source_bool]
 
-                        target = keys[target_mask].item()  # Kaon
+                        target = keys[target_mask].item()
                         target_bool = data['final_keys'] == target
-                        # data['tracks'].x[target_bool] = source_x  # coping pid response is sufficient as it is purely kinematic and this would flip the charge
+
                         data['tracks'].pid[target_bool] = source_pid
                 else:
                     continue
         return list_data
 
-    # flip K* decay mode and dupe
+
     if False and configs:
         res = []
         for data in list_data:
@@ -95,11 +95,11 @@ def adjust_data(configs, path, list_data):
                         -1 * bd_jpsikst).values):
                     if torch.abs(data['truth_moth_ids'][edge_mask])[0].item() == 511:
                         target_pion_mask = torch.abs(data['truth_part_ids'][comp]) == 211
-                        target_pion = keys[target_pion_mask].item()  # pion
+                        target_pion = keys[target_pion_mask].item()
                         target_pion_bool = data['final_keys'] == target_pion
                         pion_charge = data['tracks'].x[target_pion_bool][-1][-1].item()
                         target_kaon_mask = torch.abs(data['truth_part_ids'][comp]) == 321
-                        target_kaon = keys[target_kaon_mask].item()  # Kaon
+                        target_kaon = keys[target_kaon_mask].item()
                         target_kaon_bool = data['final_keys'] == target_kaon
                         kaon_charge = data['tracks'].x[target_kaon_bool][-1][-1].item()
 
@@ -119,9 +119,9 @@ def adjust_data(configs, path, list_data):
                 res.append(charge_flipped_data)
         return res
 
-    # Adding a whitening
-    # The idea is to take the decay which we want to calibrate on and whiten the charge and pid information
-    # and see the performance
+
+
+
     if True and configs:
         if "Bd_JpsiKst" in path:
             for data in list_data:

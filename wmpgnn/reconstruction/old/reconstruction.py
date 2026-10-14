@@ -7,7 +7,7 @@ import numpy as np
 from wmpgnn.reconstruction.reco_helper import reconstruct_decay, flatten, match_decays, particle_name
 
 
-def get_ref_signal(ref_signal):  # Here we can define them all
+def get_ref_signal(ref_signal):
     if 'Bs_Jpsiphi' in ref_signal:
         signal_decay = {'daughters': ['mu+', 'mu-', 'K+', 'K-'], 'mothers': ['B(s)0']}
         cc_signal_decay = {'daughters': ['mu+', 'mu-', 'K+', 'K-'], 'mothers': ['B(s)~0']}
@@ -33,9 +33,9 @@ def lca_reco_matrix(graph, mode="reco"):
     pd_matrix = pd.DataFrame(edge_index.T, columns=['senders', 'receivers'])
     if mode == "reco":
         edges = graph[('tracks', 'to', 'tracks')].lca.cpu()
-        pd_matrix["LCA_dec"] = torch.argmax(edges, axis=-1).tolist()  # LCA decision
+        pd_matrix["LCA_dec"] = torch.argmax(edges, axis=-1).tolist()
     else:
-        pd_matrix["LCA_dec"] = graph[('tracks', 'to', 'tracks')].y.tolist()  # LCA decision
+        pd_matrix["LCA_dec"] = graph[('tracks', 'to', 'tracks')].y.tolist()
     pd_matrix.set_index(['senders', 'receivers'], inplace=True)
     pd_matrix = pd_matrix.reset_index()
     pd_matrix = pd_matrix[pd_matrix['senders'] < pd_matrix['receivers']]
@@ -55,7 +55,7 @@ def lca_truth_matrix(graph):
 
 
 def get_asso_frag(sig_dict, graph, cluster):
-    # check if the frag exists if not just return it problem solved. yey
+
     if "frag_y" not in graph:
         return sig_dict
     res_dict = sig_dict
@@ -77,15 +77,15 @@ def get_asso_frag(sig_dict, graph, cluster):
 
 def get_pred_ft(sig_dict, graph, cluster, ft_score):
     res_dict = sig_dict
-    # Save combined b bbar score, save individual scores, save pid of final
+
     cluster_keys = cluster['node_keys']
     keys = graph['final_keys']
     b_daughters_mask = np.isin(keys, cluster_keys)
 
-    # Get the pid of the particles
+
     res_dict["final_pid"] = ','.join(str(x.item()) for x in graph["part_ids"][b_daughters_mask])
 
-    # Get the individual scores stored as strings
+
     ft_score = ft_score[b_daughters_mask].cpu()
     res_dict["final_b_score"] = ','.join(str(x.item()) for x in ft_score[:, :1].squeeze())
     res_dict["final_bbar_score"] = ','.join(str(x.item()) for x in ft_score[:, 2:].squeeze())
@@ -97,16 +97,16 @@ def get_pred_ft(sig_dict, graph, cluster, ft_score):
 
 def get_pv_asso(sig_dict, graph, cluster, pv_des):
     res_dict = sig_dict
-    # Get the key information of the cluster which is looked at
+
     cluster_keys = cluster['node_keys']
     keys = graph['final_keys']
     b_daughters_mask = np.isin(keys, cluster_keys)
 
-    # Get the individual scores stored as strings
+
     true_pv = pv_des["true"][b_daughters_mask]
     minIP_pv = torch.argmin(pv_des["minIP"][b_daughters_mask], dim=1)
 
-    # Either per track level or on the full B system
+
     pred_pv = pv_des["pred"][b_daughters_mask]
     pred_pv_track = torch.argmax(pred_pv, dim=1)
     pred_pv_system = torch.argmax(torch.sum(pred_pv, dim=0))
@@ -167,11 +167,11 @@ def reco_event(graph, event, config, signal, sig_df, evt_df, ft_des=None, pv_des
             n_sel_heavy_h = 0
             n_sel_bkg_part = 0
 
-        perfect_evt_reco = 1  # Flag for perfect event reco
+        perfect_evt_reco = 1
         if n_sel_bkg_part > 0:
             perfect_evt_reco = 0
 
-        # Looping over reco candidates
+
         for tc_key in tc_dict.keys():
             sig_dict = {'EventNumber': event, 'NumParticlesInEvent': n_part,
                         "PerfectReco": 0, "AllParticles": 0, "NoneIso": 0, "PartReco": 0, "NotFound": 0,
@@ -220,7 +220,7 @@ def reco_event(graph, event, config, signal, sig_df, evt_df, ft_des=None, pv_des
                         get_pv_asso(sig_dict, graph, rc, pv_des)
                     break
                 elif true_in_reco == 1 and len(rc['node_keys']) > len(tc['node_keys']):
-                    sig_dict["NoneIso"] = 1  # background tracks in signal
+                    sig_dict["NoneIso"] = 1
                     sig_dict["PartReco"] = 0
                     if ft_des is not None:
                         sig_dict = get_pred_ft(sig_dict, graph, rc, ft_des)
@@ -229,7 +229,7 @@ def reco_event(graph, event, config, signal, sig_df, evt_df, ft_des=None, pv_des
                         get_pv_asso(sig_dict, graph, rc, pv_des)
                     break
                 elif 0.2 <= true_in_reco < 1:
-                    sig_dict["PartReco"] = 1  # FT decision can not be trusted
+                    sig_dict["PartReco"] = 1
                     sig_dict["NumBkgParticles_noniso"] = len(rc['node_keys']) - len(tc['node_keys'])
                     if ft_des is not None:
                         sig_dict = get_pred_ft(sig_dict, graph, rc, ft_des)
@@ -244,7 +244,7 @@ def reco_event(graph, event, config, signal, sig_df, evt_df, ft_des=None, pv_des
             if sig_dict["AllParticles"] == 0 and sig_dict["NoneIso"] == 0 and sig_dict["PartReco"] == 0:
                 sig_dict["NotFound"] = 1
 
-            # Get origin B id
+
             indices = [particle_keys.index(x) for x in tc['node_keys']]
             signal_LCA_id = true_LCA[true_LCA['senders'].isin(indices) | true_LCA['receivers'].isin(indices)]["LCA_id"]
             values, counts = np.unique(signal_LCA_id, return_counts=True)
@@ -265,7 +265,7 @@ def reco_event(graph, event, config, signal, sig_df, evt_df, ft_des=None, pv_des
                 sig_dict["num_pvs"] = graph["pvs"].x.shape[0]
             sig_df = sig_df._append(sig_dict, ignore_index=True)
 
-        # temp stuff
+
         evt_df = evt_df._append({'EventNumber': event,
                                  'NumParticlesInEvent': n_part,
                                  'NumParticlesFromHeavyHadronInEvent': n_part_heavy_h,

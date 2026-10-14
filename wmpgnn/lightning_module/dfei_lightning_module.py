@@ -1,6 +1,7 @@
 import pytorch_lightning as L
 
 from collections import defaultdict
+import warnings
 
 import torch.nn as nn
 
@@ -26,15 +27,28 @@ class DFEILightningModule(L.LightningModule):
         self.signal = "_".join(configs["evaluate"]["sample"])
         if configs["evaluate"]["over_write"] != "":
             self.signal += "__" + configs["evaluate"]["over_write"]
+        _split = configs["evaluate"].get("split", "tst")
+        if _split != "tst":
+            # Tag non-test evaluations so val-selection outputs never overwrite or
+            # get mistaken for the final test-set result.
+            self.signal += "__" + _split
 
         self.configs = configs["inference"]
         self.model = model
-        self.use_pid = configs["DFEI"]["use_pid"]  # str holding what to do with pid information for DFEI
+        self.use_pid = configs["DFEI"]["use_pid"]
+
+        if self.use_pid == "true":
+            warnings.warn(
+                "CONTAMINATION: use_pid='true' feeds true Monte-Carlo PID into the "
+                "DFEI model. Oracle/upper-bound setting, not a realistic result. "
+                "Use use_pid='realistic' for the headline number.",
+                stacklevel=2,
+            )
 
         self.optimizer_class = optimizer_class
         self.optimizer_params = optimizer_params
 
-        # Loss functions + associated inference class for plotting
+
         if self.configs["LCA"]:
             self.lca_criterion = nn.CrossEntropyLoss(weight=pos_weights["LCA"])
         if self.configs["node_prune"]:
@@ -46,19 +60,19 @@ class DFEILightningModule(L.LightningModule):
 
         self.trn_log, self.val_log = init_logs(configs)
         self.tst_log = init_logs(configs, mode="test")
-        # init event reconstruction class
+
         self.evt_reco = EventReconstruction(configs)
 
-        # Pruning threshold for reco
+
         self.edge_prune = configs["inference"]["edge_prune_thr"]
         self.node_prune = configs["inference"]["node_prune_thr"]
 
         self.log_dir = configs["log_dir"]
 
     def forward(self, batch):
-        if self.use_pid == "realistic":  # only for pythia
+        if self.use_pid == "realistic":
             batch["tracks"].x = torch.cat([batch["tracks"].x, batch["tracks"].real_pid], dim=1)
-        elif self.use_pid == "true":  # mc response for lhcb or onehot for pythia
+        elif self.use_pid == "true":
             batch["tracks"].x = torch.cat([batch["tracks"].x, batch["tracks"].pid], dim=1)
         return self.model(batch)
 
@@ -70,7 +84,7 @@ class DFEILightningModule(L.LightningModule):
             optimizer,
             mode="min",
             factor=0.5,
-            patience=5,  # Reduce LR after 5 epochs of no improvement
+            patience=5,
             min_lr=1e-6,
         )
 
@@ -89,7 +103,7 @@ class DFEILightningModule(L.LightningModule):
         optimizers = self.optimizers()
         loss = init_loss(self.device)
 
-        # modify batch to include pid information depending on use_pid or not
+
         if self.use_pid == "realistic":
             batch["tracks"].x = torch.cat([batch["tracks"].x, batch["tracks"].real_pid], dim=1)
         elif self.use_pid == "true":
@@ -134,16 +148,20 @@ class DFEILightningModule(L.LightningModule):
                     get_block_score(log, block.edge_weights[("tracks", "to", "pvs")].squeeze(), y_pv_asso, i,
                                     var="pv_asso")
 
-        combined_loss = loss["LCA"] + loss["t_nodes"] + 33*  loss["tt_edges"] + loss["pv_asso"]
+        # 33 = hand-tuned relative weight on the edge-pruning loss to balance it
+        # against LCA/node/pv-asso terms (edge loss is otherwise dominated). Tune via
+        # config if revisiting the loss balance.
+        edge_loss_weight = 33
+        combined_loss = loss["LCA"] + loss["t_nodes"] + edge_loss_weight * loss["tt_edges"] + loss["pv_asso"]
 
-        # Apply reco
+
         if mode == "test":
-            # Attaching pruning information to graph
+
             if self.configs["node_prune"]:
                 outputs["node_weights"] = block.node_weights["tracks"].squeeze()
             if self.configs["edge_prune"]:
                 outputs["edge_weights"] = block.edge_weights[('tracks', 'to', 'tracks')].squeeze()
-            # Getting the PV decisions
+
             if self.configs["pv_asso"]:
                 pv_asso_des = {"pred": block.edge_weights[('tracks', 'to', 'pvs')].squeeze(), "minIP": minip,
                                "true": y_pv_asso.squeeze(), "pv_filter": pv_filter}
@@ -188,7 +206,7 @@ class DFEILightningModule(L.LightningModule):
     def on_test_epoch_end(self):
         if self.version is None:
             self.version = self.logger.version
-        # grab from the class and save to disk
+
         sig_df, evt_df = self.evt_reco.collect_results()
         sig_df.to_csv(f'{self.log_dir}/DFEI/version_{self.version}/signal_reco_df_{self.signal}.csv', index=False)
         evt_df.to_csv(f'{self.log_dir}/DFEI/version_{self.version}/event_reco_df_{self.signal}.csv', index=False)
@@ -218,7 +236,7 @@ class DFEILightningModule(L.LightningModule):
                 plot_roc_curve(self.tst_log[f"sig_pv_asso_score_{i}"], self.tst_log[f"bkg_pv_asso_score_{i}"],
                                [f"NN_pv_asso_{i}_roc", "sig", "bkg"], self.version,
                                model="DFEI", channel=self.signal, log_dir=self.log_dir)
-            # Get the PV association performance
+
             log = self.evt_reco.log
             pv_perf = {}
             pv_perf["all_tracks"] = plot_pv_missasso(log["pv_corr_ml"], log["pv_corr_ip"], log["pv_total"], log["npvs"],

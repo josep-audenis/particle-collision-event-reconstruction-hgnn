@@ -24,7 +24,7 @@ class DFEI_HGNN(pl.LightningModule):
         node_types = config["node_types"]
         edge_types = [(edge.split('_')[0], 'to', edge.split('_')[1]) for edge in config["edge_types"]]
 
-        # Start setting up the DFEI model
+
         self.encode = config["encoder"]["usage"]
         if self.encode:
             self._encoder = HeteroGraphCoder(config["encoder"], node_types, edge_types)
@@ -42,8 +42,8 @@ class DFEI_HGNN(pl.LightningModule):
             self._op_trafo = HeteroGraphTrafo(config["op_trafo"])
 
     def forward(self, data):
-        init_graph_pid = data['tracks'].x[:, -6:]  # charge + 5 pid, hard coded be careful
-        # Latent graph
+        init_graph_pid = data['tracks'].x[:, -6:]
+
         if self.encode:
             data = self._encoder(data)
         latent = data.clone()
@@ -67,7 +67,7 @@ class FT_HGNN(nn.Module):
         node_types = config["node_types"]
         edge_types = [(edge.split('_')[0], 'to', edge.split('_')[1]) for edge in config["edge_types"]]
 
-        # Start setting up the DFEI model
+
         self.encode = config["encoder"]["usage"]
         if self.encode:
             self._encoder = HeteroGraphCoder(config["encoder"], node_types, edge_types)
@@ -85,9 +85,9 @@ class FT_HGNN(nn.Module):
             self._op_trafo = HeteroGraphTrafo(config["op_trafo"])
 
     def forward(self, data):
-        init_graph_pid = data['tracks'].x[:, -6:]  # charge + 5 pid, hard coded be careful
+        init_graph_pid = data['tracks'].x[:, -6:]
 
-        # Latent graph
+
         if self.encode:
             data = self._encoder(data)
         latent = data.clone()
@@ -125,9 +125,9 @@ class DFEIFT(pl.LightningModule):
             lca = data[("tracks", "to", "tracks")].edges
             lca_score = torch.argmax(lca, dim=1).unsqueeze(1)
         else:
-            # Add a sampling based on LCA prediction of bis?
+
             lca_score = data[("tracks", "to", "tracks")].y.unsqueeze(1)
-            # lca_score = F.one_hot(data[("tracks", "to", "tracks")].y.to(torch.long), num_classes=4).to(torch.float)
+
 
         if self.ft_usage:
             data["tracks"].x = torch.cat([data["tracks"].x, init_graph], dim=1)

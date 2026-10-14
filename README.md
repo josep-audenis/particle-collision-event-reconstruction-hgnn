@@ -26,7 +26,8 @@ Main configs live in `config_files`:
 - `evaluate_DFEI.yaml`
 - `evaluate_IFT.yaml`
 
-Additional experiment configs live in `examples`.
+Additional experiment configs live under `config_files/cache_10000`,
+`config_files/cache_50000`, `config_files/cache_100000`, and `config_files/cache_200000`.
 
 Before running, update each config path under `settings.data_dir`, plus any
 checkpoint or log path needed by your environment.
@@ -92,17 +93,17 @@ python ../wmpgnn/analysis/trainer.py --config train_DFEI.yaml
 python ../wmpgnn/analysis/trainer.py --config train_IFT.yaml
 ```
 
-Run example sweeps from `examples`:
+Run example sweeps from `scripts`:
 
 ```bash
-cd examples
+cd scripts
 bash run.sh
 ```
 
 or use the summary wrapper:
 
 ```bash
-cd examples
+cd scripts
 bash fancy_run.sh
 ```
 

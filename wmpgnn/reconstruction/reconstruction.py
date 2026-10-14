@@ -42,7 +42,7 @@ def is_signal_match(signal, labels, node_keys):
 
 class EventReconstruction:
     def __init__(self, configs):
-        # boolean whether to use true reconstruction or predicted reconstruction
+
         self.configs = configs["inference"]
         self.use_lca = True
         if "LCA" in self.configs:
@@ -54,7 +54,7 @@ class EventReconstruction:
         self.evt_counter = 0
         self.sig_df, self.evt_df = [], []
 
-        # we look at independent tracks so we can directly sum it which shouldn't be a problem
+
         self.log = {"pv_corr_ml": {}, "pv_corr_ip": {}, "pv_total": {}, "npvs": {}}
 
     def collect_results(self):
@@ -75,10 +75,10 @@ class EventReconstruction:
         return self.sig_df, self.evt_df
 
     def reconstruct_heavyhadrons(self, outputs, ft_des=None, pv_des=None):
-        # debatching
+
         graphs = outputs.to_data_list()
 
-        # Output weights
+
         node_weights = outputs["node_weights"]
         edge_weights = outputs["edge_weights"]
         lca = outputs[("tracks", "tracks")].lca
@@ -90,12 +90,12 @@ class EventReconstruction:
 
         n_graphs = track_batch.max().item() + 1
         graph_ids = torch.arange(n_graphs, device=self.device)
-        track_masks = track_batch.unsqueeze(1) == graph_ids.unsqueeze(0)  # Shape: [n_tracks, n_graphs]
+        track_masks = track_batch.unsqueeze(1) == graph_ids.unsqueeze(0)
 
         precomputed_pv_desc = []
         precomputed_ft_desc = []
         for i in range(n_graphs):
-            # Create boolean mask to find per event information
+
             track_mask = track_masks[:, i]
             tr_tr_mask = track_masks[tr_tr_edge_idx[0], i] & track_masks[tr_tr_edge_idx[1], i]
             pv_mask = pv_batch == i
@@ -107,10 +107,10 @@ class EventReconstruction:
             ntracks = torch.unique(evt_tr_pv_edge_idx[0]).shape[0]
             npvs = torch.unique(evt_tr_pv_edge_idx[1]).shape[0]
 
-            # some temp holding final part ids
+
             temp = graphs[i]["part_ids"]
 
-            # log pv performance for all tracks
+
             if pv_des is not None:
                 pv_filter = torch.prod(pv_des["pv_filter"][tr_pv_mask].view(ntracks, npvs), dim=1, dtype=bool)
 
@@ -119,7 +119,7 @@ class EventReconstruction:
                 min_ip_pv = torch.argmin(pv_des["minIP"][tr_pv_mask].view(ntracks, npvs), dim=1)
                 pred_pv = pv_des["pred"][tr_pv_mask].view(ntracks, npvs)
                 pred_pv_track_level = torch.argmax(pred_pv, dim=1)
-                # Here we remove ghost/tracks with true pv not being recoed
+
                 if npvs not in self.log["pv_total"].keys():
                     self.log["pv_corr_ml"][npvs], self.log["pv_corr_ip"][npvs], self.log["pv_total"][npvs] = 0, 0, 0
                     self.log["npvs"][npvs] = 0
@@ -128,7 +128,7 @@ class EventReconstruction:
                 self.log["pv_total"][npvs] += int(torch.sum(pv_filter).item())
                 self.log["npvs"][npvs] += 1
 
-            # apply the pruning
+
             if self.configs.get("node_prune", True):
                 node_selbool = node_weights[track_mask] > self.configs["node_prune_thr"]
                 edge_mask = true_node_pruning(node_selbool, graphs[i], "tracks", [('tracks', 'to', 'tracks')])
@@ -138,24 +138,24 @@ class EventReconstruction:
             if self.configs.get("edge_prune", True):
                 edge_pruning(edge_selbool, graphs[i], ('tracks', 'to', 'tracks'))
 
-            # attach all part ids again
+
             graphs[i]["pid_holder"] = temp
 
-            # Apply pruning on pv prediction
+
             if pv_des is not None:
                 evt_pv_des = {"true": y_pv[node_selbool].cpu(), "pred": pred_pv[node_selbool].cpu(),
                               "ip": min_ip_pv[node_selbool].cpu(), "npvs": npvs}
                 precomputed_pv_desc.append(evt_pv_des)
             else:
                 precomputed_pv_desc.append(None)
-            # Apply pruning on ft bool
+
             if ft_des is not None:
                 evt_ft_des = ft_des[track_mask][node_selbool]
                 precomputed_ft_desc.append(evt_ft_des.cpu())
             else:
                 precomputed_ft_desc.append(None)
 
-        # now multiprocess the reco
+
         args_list = [(graph.cpu(), pv_desc, ft_desc) for graph, pv_desc, ft_desc in
                      zip(graphs, precomputed_pv_desc, precomputed_ft_desc)]
         with ThreadPool(processes=4) as pool:
@@ -206,11 +206,11 @@ class EventReconstruction:
             else:
                 n_sel_part, n_sel_heavy_h, n_sel_bkg_part = 0, 0, 0
 
-            perfect_evt_reco = 1  # Flag for perfect event reco
+            perfect_evt_reco = 1
             if n_sel_bkg_part > 0:
                 perfect_evt_reco = 0
 
-            # Looping over reco candidates
+
             sig_dict_holder = []
             for tc_key in tc_dict.keys():
                 sig_dict = {'NumParticlesInEvent': n_part,
@@ -245,7 +245,7 @@ class EventReconstruction:
                             get_pv_asso(sig_dict, graph, rc, pv_des)
                         break
                     elif true_in_reco == 1 and len(rc['node_keys']) > len(tc['node_keys']):
-                        sig_dict["NoneIso"] = 1  # background tracks in signal
+                        sig_dict["NoneIso"] = 1
                         sig_dict["PartReco"] = 0
                         sig_dict["NumBkgParticles_noniso"] = count_reco_background_particles(
                             rc["node_keys"], tc["node_keys"]
@@ -257,7 +257,7 @@ class EventReconstruction:
                             get_pv_asso(sig_dict, graph, rc, pv_des)
                         break
                     elif 0.2 <= true_in_reco < 1:
-                        sig_dict["PartReco"] = 1  # FT decision can not be trusted
+                        sig_dict["PartReco"] = 1
                         sig_dict["NumBkgParticles_noniso"] = count_reco_background_particles(
                             rc["node_keys"], tc["node_keys"]
                         )
@@ -274,7 +274,7 @@ class EventReconstruction:
                 if sig_dict["AllParticles"] == 0 and sig_dict["NoneIso"] == 0 and sig_dict["PartReco"] == 0:
                     sig_dict["NotFound"] = 1
 
-                # Get origin B id
+
                 indices = [truth_particle_keys.index(x) for x in tc['node_keys']]
                 signal_LCA_id = true_LCA[true_LCA['senders'].isin(indices) | true_LCA['receivers'].isin(indices)][
                     "LCA_id"]

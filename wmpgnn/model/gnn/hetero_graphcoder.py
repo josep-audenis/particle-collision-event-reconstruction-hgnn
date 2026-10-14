@@ -40,7 +40,7 @@ class HeteroGraphCoder(pl.LightningModule):
 
     def forward(self, graph):
         if self._endecoder:
-            # Functions as a decoder
+
             for node_type in self._node_types:
                 graph[node_type].x = self._node_models[node_type](graph[node_type].x, graph[node_type].batch)
             for edge_type in self._edge_types:

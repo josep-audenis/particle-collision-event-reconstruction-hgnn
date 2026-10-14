@@ -108,7 +108,7 @@ def adjust_df_dtype(df):
 def get_part_rel(part_file, rel_file, node_features, edge_features, configs=None, reco_suffix=''):
     if configs is None:
         configs = {}
-    # Default particle information which needs to be read in
+
     default_part_info = ['ExpandedEventNumber', 'ExpandedParticleIndex', 'ExpandedPrimaryHeavyHadronIndex', 'id',
                          'ParticleType', f"associated_ip{reco_suffix}", f"pt{reco_suffix}",
                          'inGeomAcc', 'isCharged', 'isbhadron', 'isfromb', 'nFinals',
@@ -120,12 +120,12 @@ def get_part_rel(part_file, rel_file, node_features, edge_features, configs=None
 
     additional_part = []
     additional_rel = []
-    # additional relation variables necessary for early edge prune
+
     if configs['edge_prune']:
         additional_rel += [f"FromSameAssociatedPV{reco_suffix}", f"theta{reco_suffix}"]
 
     if configs['use_ft']:
-        # afaik it is fragPartnerIndex is expanded
+
         additional_part += ["isfromb", "isFrag", 'fragType', 'fragPartnerIndex']
 
     if configs["sim"] == "LHCb":
@@ -134,7 +134,7 @@ def get_part_rel(part_file, rel_file, node_features, edge_features, configs=None
     part_info = node_features + default_part_info + additional_part
     rel_info = edge_features + default_rel_info + additional_rel
 
-    # check for variables which are not able to be load in and need to be derived later on
+
     part_keys = get_keys(part_file, "Particles")
     rel_keys = get_keys(rel_file, "ParticleRelations")
     to_derive = {'part': sorted(set(part_info) - set(part_keys)), 'rel': sorted(set(rel_info) - set(rel_keys))}
@@ -142,13 +142,13 @@ def get_part_rel(part_file, rel_file, node_features, edge_features, configs=None
     part_loading = sorted(set(part_info + part_base_quant) & set(part_keys))
     rel_loading = sorted(set(rel_info+ rel_base_quant) & set(rel_keys))
 
-    # Loading the data
+
     print("=" * 15)
     print("Loading in the data")
     part_data = load_data(part_file, part_loading, "Particles")
     rel_data = load_data(rel_file, rel_loading, "ParticleRelations")
 
-    # adjust dtype
+
     part_data = adjust_df_dtype(part_data)
     rel_data = adjust_df_dtype(rel_data)
 
@@ -156,7 +156,7 @@ def get_part_rel(part_file, rel_file, node_features, edge_features, configs=None
 
 
 def filter_data(part_data, rel_data, configs=None, reco_suffix=''):
-    # adding information to th edges for the edge selection
+
     part_data.set_index(['ExpandedEventNumber', 'ExpandedParticleIndex'], inplace=True)
     for idx, p in [('First', 'p1'), ('Second', 'p2')]:
         temp = part_data.reindex(pd.MultiIndex.from_arrays(
@@ -169,7 +169,7 @@ def filter_data(part_data, rel_data, configs=None, reco_suffix=''):
     del temp
 
     """Filter particle and relations based on acceptance"""
-    # stable particles -> forming the nodes of the graph
+
     selbool = (part_data['ParticleType'] == 0) & (part_data['isCharged'] == 1) & (
             part_data[f'pt{reco_suffix}'] > 0) & (part_data[f'associated_ip{reco_suffix}'] >= 0)
     if configs['allBfinal']:
@@ -179,7 +179,7 @@ def filter_data(part_data, rel_data, configs=None, reco_suffix=''):
     selbool = selbool & geo_selbool
     stable_part = part_data[selbool].reset_index(drop=True)
 
-    # All relations
+
     if configs['allBfinal']:
         is_B_final = allstable_part["ExpandedPrimaryHeavyHadronIndex"] != -1
         is_in_geom_acc = allstable_part['inGeomAcc'] == 1
@@ -209,7 +209,7 @@ def filter_data(part_data, rel_data, configs=None, reco_suffix=''):
     else:
         rel_data = rel_data[selbool]
 
-    # Signal relations
+
     selbool = ((rel_data['FromSameHeavyHadron'] == 1) &
                (rel_data['p1_isCharged'] == 1) & (rel_data['p2_isCharged'] == 1))
     if not configs['allBfinal']:
@@ -218,7 +218,7 @@ def filter_data(part_data, rel_data, configs=None, reco_suffix=''):
     allsig_rel = rel_data[selbool].copy().reset_index(drop=True)
     print("=" * 15)
 
-    # b particles within the event
+
     print('Treating only B as signal')
     data_b_particles = part_data[(part_data['isbhadron'] == 1)]
     del part_data

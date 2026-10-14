@@ -1,5 +1,5 @@
 
-# Implementation of bfs to find isolated systems
+
 def find_components_bfs(edge_index):
     edge_index = edge_index.numpy()
     all_nodes = set(edge_index[0]).union(set(edge_index[1]))
@@ -32,7 +32,7 @@ def find_components_bfs(edge_index):
                     queue.append(neighbor)
 
         node_list = [int(node) for node in component]
-        # find edge indices where both src and dst are in this component
+
         edge_indices = [
             i for i in range(edge_index.shape[1])
             if edge_index[0, i] in component and edge_index[1, i] in component

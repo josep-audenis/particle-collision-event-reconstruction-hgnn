@@ -18,7 +18,7 @@ from wmpgnn.analysis.load_module import load_module
 
 
 class DFEIPVAssoModule(L.LightningModule):
-    # Forward pass of the DFEI model, debatch the batched data to obtain per graph scores and masks
+
     def __init__(self, model, configs):
         super().__init__()
         self.name = "pv_asso_module"
@@ -33,12 +33,12 @@ class DFEIPVAssoModule(L.LightningModule):
 
     @torch.no_grad()
     def forward(self, batch):
-        with self.lock:  # trad looking
+        with self.lock:
             if self.use_pid == "realistic":
                 batch["tracks"].x = torch.cat([batch["tracks"].x, batch["tracks"].real_pid], dim=1)
             elif self.use_pid == "true":
                 batch["tracks"].x = torch.cat([batch["tracks"].x, batch["tracks"].pid], dim=1)
-            # Obtain the predicted quantity from the DFEI model
+
             outputs = self.model(batch.to(self.custom_device))
 
             lca_score = outputs[('tracks', 'to', 'tracks')].edges
@@ -53,7 +53,7 @@ class DFEIPVAssoModule(L.LightningModule):
 
             n_graphs = track_batch.max().item() + 1
             graph_ids = torch.arange(n_graphs, device=self.custom_device)
-            track_masks = track_batch.unsqueeze(1) == graph_ids.unsqueeze(0)  # Shape: [n_tracks, n_graphs]
+            track_masks = track_batch.unsqueeze(1) == graph_ids.unsqueeze(0)
             precomputed_slices = []
             for i in range(n_graphs):
                 track_mask = track_masks[:, i]
@@ -62,14 +62,14 @@ class DFEIPVAssoModule(L.LightningModule):
                 pv_mask = pv_batch == i
                 tr_pv_mask = track_masks[tr_pv_edge_idx[0], i] & pv_mask[tr_pv_edge_idx[1]]
 
-                # saving everything transferred to cpu for remaining parallel processing
+
                 graph_tr_tr_pred_y = tr_tr_pred_y[tr_tr_mask]
                 tr_tr_edge_selbool = graph_tr_tr_pred_y > self.edge_thrs
                 precomputed_slices.append({
                     'tracks_pred_y': tracks_pred_y[track_mask].cpu(),
                     'lca_score': lca_score[tr_tr_mask].cpu(),
                     'tr_tr_pred_y': graph_tr_tr_pred_y.cpu(),
-                    # "tr_tr_edge_selbool": tr_tr_edge_selbool.cpu(),
+
                     'pv_desc': tr_pv_pred_y[tr_pv_mask].cpu(),
                 })
             torch.cuda.empty_cache()
@@ -100,7 +100,7 @@ class TruePVAssoModule(L.LightningModule):
 
         n_graphs = track_batch.max().item() + 1
         graph_ids = torch.arange(n_graphs, device=self.custom_device)
-        track_masks = track_batch.unsqueeze(1) == graph_ids.unsqueeze(0)  # Shape: [n_tracks, n_graphs]
+        track_masks = track_batch.unsqueeze(1) == graph_ids.unsqueeze(0)
 
         precomputed_slices = []
         for i in range(track_batch.max().item() + 1):
@@ -109,7 +109,7 @@ class TruePVAssoModule(L.LightningModule):
             tr_pv_mask = track_masks[tr_pv_edge_idx[0], i] & pv_mask[tr_pv_edge_idx[1]]
             tr_tr_mask = track_masks[tr_tr_edge_idx[0], i] & track_masks[tr_tr_edge_idx[1], i]
 
-            # saving everything transferred to cpu for remaining parallel processing
+
             precomputed_slices.append({
                 "tr_tr_edge_selbool": tr_tr_pred_y[tr_tr_mask].cpu(),
                 'pv_desc': tr_pv_pred_y[tr_pv_mask].cpu(),
@@ -120,7 +120,7 @@ class TruePVAssoModule(L.LightningModule):
 
 
 def obtain_pv_model(configs):
-    # this needs to be adapted
+
     pv_model = configs["settings"]["pv_model"]
     if  pv_model == "true" or pv_model == "ip":
         print(f"Using {pv_model} information for association")
@@ -142,11 +142,11 @@ def obtain_pv_model(configs):
 
 def get_trn_val_loaders(configs):
     data_dir = configs["settings"]["data_dir"]
-    # default 8 -> 2 parallel loading data and forward pass, 4 each during association
+
     ncpus = max(1, int(configs["settings"]["ncpu"] / 4))
     nfiles = get_nfiles(configs["settings"])
 
-    # Getting the PV model
+
     pv_model = obtain_pv_model(configs)
 
     nevts = {"training": {}, "validation": {}}
@@ -185,36 +185,39 @@ def get_trn_val_loaders(configs):
     print(f"Train dataset       : {len(trn_dataset)}")
     print(f"Validation dataset  : {len(val_dataset)}")
     print("=" * 30)
-    # Creating the dataloaders
+
     batch_size = configs["settings"]["batch_size"]
     trn_loader = DataLoader(trn_dataset, batch_size=batch_size, num_workers=ncpus * 2, drop_last=True, shuffle=True)
 
-    # Shuffle the initial dataset of validation as it is currently sorted by the samples
-    generator = torch.Generator()
+
+    generator = torch.Generator().manual_seed(42)
     shuffled_indices = torch.randperm(len(val_dataset), generator=generator).tolist()
     val_dataset_shuffled = Subset(val_dataset, shuffled_indices)
-    val_loader = DataLoader(val_dataset_shuffled, batch_size=batch_size, num_workers=ncpus * 2, drop_last=True)
+    val_loader = DataLoader(val_dataset_shuffled, batch_size=batch_size, num_workers=ncpus * 2, drop_last=False)
 
     return trn_loader, val_loader, weights, nevts
 
 
 def get_tst_loader(configs, model="DFEI"):
     data_dir = configs["settings"]["data_dir"]
-    # default 8 -> 2 parallel loading data and forward pass, 4 each during association
+
     ncpus = max(1, int(configs["settings"]["ncpu"] / 4))
     nfiles = get_nfiles(configs["evaluate"])
+    split = configs["evaluate"].get("split", "tst")
+    if split not in {"val", "tst"}:
+        raise ValueError(f"Unknown evaluation split: {split}")
 
-    # Getting the PV model
+
     pv_model = obtain_pv_model(configs)
 
     nevts = {"testing": {}}
 
-    print("Testing:")
+    print(f"Testing (split={split}):")
     load_tst_dataset = partial(load_dataset, configs=configs, mode="val", pv_asso_model=pv_model)
     tst_dataset = []
     for sample, files in nfiles.items():
         nevts["testing"][sample] = 0
-        tst_paths = sorted(glob.glob(f'{data_dir}/{sample}/tst_data_*'))[:files]
+        tst_paths = sorted(glob.glob(f'{data_dir}/{sample}/{split}_data_*'))[:files]
         with ThreadPool(processes=ncpus) as pool:
             results = list(tqdm(pool.imap(load_tst_dataset, tst_paths), total=len(tst_paths),
                                 desc=f"Loading {sample} testing dataset"))
@@ -222,8 +225,8 @@ def get_tst_loader(configs, model="DFEI"):
             tst_dataset.extend(r)
             nevts["testing"][sample] += len(r)
 
-    # Shuffle the initial dataset of validation as it is currently sorted by the samples
-    generator = torch.Generator()
+
+    generator = torch.Generator().manual_seed(42)
     shuffled_indices = torch.randperm(len(tst_dataset), generator=generator).tolist()
     tst_dataset_shuffled = Subset(tst_dataset, shuffled_indices)
     tst_loader = DataLoader(tst_dataset_shuffled, batch_size=512, num_workers=2)

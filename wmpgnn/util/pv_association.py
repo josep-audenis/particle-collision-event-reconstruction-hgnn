@@ -7,7 +7,7 @@ from wmpgnn.util.pruners import *
 
 
 def find_components_bfs(edge_index):
-    # breadth first search
+
     edge_index = edge_index.numpy()
     all_nodes = set(edge_index[0]).union(set(edge_index[1]))
 
@@ -46,7 +46,7 @@ def pv_association(edge_index, pv_desc):
     ntracks = edge_index[0].max().item() + 1
     npvs = edge_index[1].max().item() + 1
     pv_desc = pv_desc.view(ntracks, npvs)
-    # here we only want the pv desc
+
     pred_pv = torch.argmax(pv_desc, dim=1)
     return pred_pv
 
@@ -56,7 +56,7 @@ def pv_associate_graph(args):
     graph, metric, node_thr = args
     graph_results = []
 
-    # Adding information from the pv association DFEI model if used
+
     if "tracks_pred_y" in metric.keys():
         graph["tracks"].pred_y = metric["tracks_pred_y"]
     if "lca_score" in metric.keys():
@@ -64,12 +64,12 @@ def pv_associate_graph(args):
     if "tr_tr_pred_y" in metric.keys():
         graph[('tracks', 'tracks')].pred_y = metric["tr_tr_pred_y"]
 
-    # Adding num pvs to original graph
+
     edge_index = graph[("tracks", "pvs")]["edge_index"]
     graph["num_pvs"] = edge_index[1].max().item() + 1
     pred_pv = pv_association(edge_index, metric["pv_desc"])
 
-    # finding the pv which are interesting
+
     if node_thr is not None:
         node_selbool = metric["tracks_pred_y"] >= node_thr
     else:
@@ -83,17 +83,17 @@ def pv_associate_graph(args):
         else:
             pv_oi_data = copy.deepcopy(graph)
 
-        # removes all the nodes associated to a different pv
+
         nodes_asso_pv_selbool = pred_pv == pv
         true_node_pruning(nodes_asso_pv_selbool, pv_oi_data, "tracks",
                           [('tracks', 'to', 'tracks'), ('tracks', 'to', 'pvs')])
 
-        # Lastly remove the pv which are not used anymore
+
         pv_selbool = torch.zeros(pv_oi_data["pvs"].x.shape[0], dtype=torch.bool)
         pv_selbool[pv] = True
 
         true_node_pruning(pv_selbool, pv_oi_data, "pvs", [('tracks', 'to', 'pvs')])
-        graph_results.append(pv_oi_data)  # check data dont need
+        graph_results.append(pv_oi_data)
     return graph_results
 
 
@@ -102,11 +102,11 @@ def pv_associate_data(data, metrics, node_thr=None, n_cores=4):
     metrics = metrics
     args_list = [(graph, metric, node_thr) for graph, metric in zip(graphs, metrics)]
 
-    # Parallel processing of graphs
-    with ThreadPool(processes=2) as pool: # adjust to 1 during develop
+
+    with ThreadPool(processes=2) as pool:
         results_nested = pool.map(pv_associate_graph, args_list)
 
-    # Flatten results
+
     pv_asso_data = []
     for graph_results in results_nested:
         pv_asso_data.extend(graph_results)

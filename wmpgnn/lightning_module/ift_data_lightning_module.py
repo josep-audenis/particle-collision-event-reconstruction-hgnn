@@ -1,6 +1,7 @@
 import pytorch_lightning as L
 
 import copy
+import warnings
 
 import torch.nn as nn
 
@@ -16,11 +17,16 @@ class IFTLightningModuleData(L.LightningModule):
         self.signal = "_".join(configs["evaluate"]["sample"])
         if configs["evaluate"]["over_write"] != "":
             self.signal += "__" + configs["evaluate"]["over_write"]
+        _split = configs["evaluate"].get("split", "tst")
+        if _split != "tst":
+            # Tag non-test evaluations so val-selection outputs never overwrite or
+            # get mistaken for the final test-set result.
+            self.signal += "__" + _split
 
         self.configs = configs["inference"]
         self.model = model
 
-        # Those function are not used however in the ckpt information is saved and thus it needs to be laod in
+
         if self.configs["frag"]:
             self.frag_criterion = nn.BCEWithLogitsLoss(pos_weight=torch.ones(1))
         if self.configs["FT"]:
@@ -30,10 +36,17 @@ class IFTLightningModuleData(L.LightningModule):
         self.dfei_use_pid = configs['DFEI']["use_pid"] if "DFEI" in configs else "None"
         self.ift_use_pid = configs["IFT"]["use_pid"]
 
-        # init event reconstruction class
+        if self.ift_use_pid == "true" or self.dfei_use_pid == "true":
+            warnings.warn(
+                "CONTAMINATION: use_pid='true' feeds true Monte-Carlo PID into the "
+                "model. Oracle/upper-bound setting, not a realistic result.",
+                stacklevel=2,
+            )
+
+
         self.evt_reco = EventReconstruction(configs)
 
-        # Pruning threshold for reco
+
         self.edge_prune = configs["inference"]["edge_prune_thr"]
         self.node_prune = configs["inference"]["node_prune_thr"]
 
@@ -43,8 +56,8 @@ class IFTLightningModuleData(L.LightningModule):
         return self.model(batch)
 
     def test_step(self, batch, batch_idx):
-        # Adding lca information to edges
-        if self.dfei_model is not None:  # lca from dfei model, overwrites from pv asso
+
+        if self.dfei_model is not None:
             dfei_input = copy.deepcopy(batch)
             if self.dfei_use_pid == "realistic":
                 dfei_input["tracks"].x = torch.cat([dfei_input["tracks"].x, dfei_input["tracks"].real_pid], dim=1)
@@ -52,15 +65,20 @@ class IFTLightningModuleData(L.LightningModule):
                 dfei_input["tracks"].x = torch.cat([dfei_input["tracks"].x, dfei_input["tracks"].pid], dim=1)
             dfei_outputs = self.dfei_model(dfei_input)
             lca = dfei_outputs[("tracks", "to", "tracks")].edges
-        elif "lca" in batch[("tracks", "to", "tracks")]:  # using the information from the pv asso model
+        elif "lca" in batch[("tracks", "to", "tracks")]:
             lca = batch[("tracks", "to", "tracks")].lca
-        else:  # using truth information
+        else:
+            warnings.warn(
+                "CONTAMINATION: no DFEI model and no cached LCA prediction; falling "
+                "back to TRUE LCA labels (tracks.y) as IFT edge input. Oracle setting.",
+                stacklevel=2,
+            )
             lca = torch.nn.functional.one_hot(batch[("tracks", "tracks")].y.to(torch.long), num_classes=4).to(
                 torch.float32)
         lca_score = torch.argmax(lca, dim=1).unsqueeze(1)
         batch[("tracks", "tracks")].edges = torch.cat([batch[("tracks", "tracks")].edges, lca_score], dim=1)
 
-        # Adding pid information to nodes, here again realistic or not
+
         if self.ift_use_pid == "realistic":
             batch["tracks"].x = torch.cat([batch["tracks"].x, batch["tracks"].real_pid], dim=1)
         elif self.ift_use_pid == "true":
@@ -69,18 +87,18 @@ class IFTLightningModuleData(L.LightningModule):
         outputs_ft = self.model(batch)
         outputs_ft[("tracks", "to", "tracks")].lca = lca
 
-        # Adjusting quantities for evaluation
+
         ft_des = torch.softmax(outputs_ft["tracks"].x, dim=1)
 
-        # Attach reco information to graph
-        # Node weights
+
+
         if self.dfei_model is not None:
             outputs_ft["node_weights"] = self.dfei_model._blocks[-1].node_weights["tracks"].squeeze()
         elif "pred_y" in outputs_ft["tracks"]:
             outputs_ft["node_weights"] = outputs_ft["tracks"].pred_y
         else:
             raise ValueError("No node weights found")
-        # Edge weights
+
         if self.dfei_model is not None:
             outputs_ft["edge_weights"] = self.dfei_model._blocks[-1].edge_weights[
                 ('tracks', 'to', 'tracks')].squeeze()

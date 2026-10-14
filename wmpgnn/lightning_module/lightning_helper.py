@@ -11,11 +11,11 @@ def make_loggable(pos_weight_dict):
     for k, v in pos_weight_dict.items():
         if isinstance(v, torch.Tensor):
             if v.ndim == 0:
-                loggable[k] = v.item()  # convert scalar tensor to float
+                loggable[k] = v.item()
             else:
-                loggable[k] = v.tolist()  # convert vector/matrix to list
+                loggable[k] = v.tolist()
         else:
-            loggable[k] = str(v)  # fallback to string
+            loggable[k] = str(v)
     return loggable
 
 
@@ -29,7 +29,7 @@ def init_logs(configs, mode="train"):
         gn_blocks = configs[model]["GNblocks"]["nBlocks"]
         if loss_config["LCA"]:
             log["LCA_loss"] = []
-            for i in range(4):  # something like num classes in config file
+            for i in range(4):
                 log[f"LCA_class{i}_num"] = []
                 for j in range(4):
                     log[f"LCA_class{i}_pred_class{j}"] = []
@@ -159,7 +159,7 @@ def ft_validation_metrics(logits, y_ft):
 
 
 def epoch_end_loggable(log):
-    # keys of the loss functions
+
     avg_log = {}
     loss_keys = [k for k in log if k.endswith('_loss')]
     for key in loss_keys:
@@ -173,7 +173,7 @@ def epoch_end_loggable(log):
         int(m.group(1)) for k in log if (m := re.search(r'LCA_class(\d+)_num', k))
     ))
 
-    # LCA logging
+
     for score in class_numbers:
         selbool = torch.tensor(log[f"LCA_class{score}_num"]) != 0
         avg_log[f"LCA_class{score}_num"] = torch.tensor(log[f"LCA_class{score}_num"]).nanmean(dim=0)

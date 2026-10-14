@@ -10,3 +10,32 @@ outputs/
 *.pyo
 .DS_Store
 .vscode
+.pytest_cache
+tmp/
+results_archive/
+
+# LaTeX compilation artifacts
+*.aux
+*.lof
+*.log
+*.lot
+*.toc
+*.out
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.bbl
+*.bcf
+*.blg
+*.run.xml
+*.nav
+*.snm
+*.vrb
+# glossaries / acronyms
+*.glo
+*.gls
+*.glg
+*.ist
+*.acn
+*.acr
+*.alg

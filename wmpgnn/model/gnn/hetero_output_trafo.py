@@ -14,7 +14,7 @@ class HeteroGraphTrafo(pl.LightningModule):
         self._edge_models = {}
         self._endecoder = endecoder
 
-        # edges
+
         if "tr_tr" in config and config["tr_tr"] != "None":
             self._edge_models[('tracks', 'to', 'tracks')] = create_mlp(config["MLP"], outdim=config["tr_tr"])
 
@@ -37,7 +37,7 @@ class HeteroGraphTrafo(pl.LightningModule):
 
     def forward(self, graph):
         if self._endecoder:
-            # Functions as an decoder
+
             for node_type in self._node_models.keys():
                 graph[node_type].x = self._node_models[node_type](graph[node_type].x, graph[node_type].batch)
             for edge_type in self._edge_models.keys():

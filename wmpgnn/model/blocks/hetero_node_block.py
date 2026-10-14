@@ -17,7 +17,7 @@ class HeteroNodeBlock(pl.LightningModule):
         self._use_nodes = use_nodes
         self._aggregation = config.get("aggregation", "sum")
         self._node_types = node_types
-        # self._node_types.remove('globals')
+
         self._edge_types = edge_types
         self._node_to_edge_types = {}
         for node_type in self._node_types:

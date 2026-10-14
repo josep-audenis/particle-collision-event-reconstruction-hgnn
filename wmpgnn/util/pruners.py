@@ -15,7 +15,7 @@ def edge_pruning(edge_indices, graph, edge_type):
 
 
 def node_pruning(valid_mask, graph, node_type, edge_types):
-    # Removes the edges, but keep the nodes and features
+
     edge_node_indices = {}
     for edge_type in edge_types:
         if edge_type[0] == node_type and edge_type[2] == node_type:
@@ -33,7 +33,7 @@ def node_pruning(valid_mask, graph, node_type, edge_types):
 
 
 def test_node_pruning(valid_mask, graph, node_type, edge_types):
-    # Removes edges and replace the nodes feature with a tensor of 0
+
     for edge_type in edge_types:
         if edge_type[0] == node_type and edge_type[2] == node_type:
             mask = valid_mask[graph[edge_type].edge_index[0]] & valid_mask[graph[edge_type].edge_index[1]]
@@ -49,27 +49,29 @@ def test_node_pruning(valid_mask, graph, node_type, edge_types):
 
 
 def true_node_pruning(node_mask, graph, node_type, edge_types):
-    # Removes the nodes and associated edges from the graph
+
     device = node_mask.device
     node_indx = torch.arange(len(node_mask), device=device)[node_mask]
     indx_proj = torch.arange(len(node_indx), device=device)
     lookup = torch.full((len(node_mask),), -1, device=device, dtype=torch.long)
     lookup[node_indx] = indx_proj
 
-    # Removing the edges nodes
+
     node_keys = list(graph[node_type].keys())
     for node_key in node_keys:
         if node_key == "ptr" or node_key == "num_pvs":
+            continue
+        if not torch.is_tensor(graph[node_type][node_key]):
             continue
         graph[node_type][node_key] = graph[node_type][node_key][node_mask]
     if hasattr(graph, "final_keys") and node_type == "tracks":
         graph.final_keys = graph.final_keys[node_mask]
         graph.part_ids = graph.part_ids[node_mask]
 
-    # Adjusting the number of tracks in the global feature
-    graph["globals"].x[0][0] = torch.sum(node_mask)  # this needs to be adjusted
 
-    # Removing the pruned edges
+    graph["globals"].x[0][0] = torch.sum(node_mask)
+
+
     for edge_type in edge_types:
         if edge_type[0] == node_type and edge_type[2] == node_type:
             mask = node_mask[graph[edge_type].edge_index[0]] & node_mask[graph[edge_type].edge_index[1]]
@@ -91,5 +93,5 @@ def true_node_pruning(node_mask, graph, node_type, edge_types):
             graph[edge_type].filter = graph[edge_type].filter[mask]
         if "y" in graph[edge_type]:
             graph[edge_type].y = graph[edge_type].y[mask]
-    # here we need to be careful since it only return 1 mask even though it creates multiple
+
     return mask

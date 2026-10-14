@@ -1,19 +1,17 @@
-import numpy as np
-import uproot
-import pandas as pd
+import glob
+import os
 
-import seaborn as sns
 import matplotlib.pyplot as plt
 import mplhep as hep
-
-hep.style.use(hep.style.LHCb2)
-
+import numpy as np
+import pandas as pd
+import seaborn as sns
+import uproot
+from matplotlib.colors import LogNorm
 from scipy.interpolate import interp1d
 from scipy.stats import multivariate_normal
-from matplotlib.colors import LogNorm
 
-import os
-import glob
+hep.style.use(hep.style.LHCb2)
 
 
 def plot_prob_corr(df, prob_vars, file=None):
@@ -56,7 +54,7 @@ def get_prob_at_p(p_val, prob_vars, interpolators, cov_matrix, noise_std=0.05):
 
     mean_values = np.column_stack([interpolators[var](p_val) for var in prob_vars]).astype(float)
 
-    # Adding noise
+
     if noise_std > 0:
         scaled_cov = (noise_std ** 2) * cov_matrix
         try:
@@ -86,7 +84,7 @@ def plot_pid_sampling(old_df, new_df, prob_vars, file=None):
     prob_bins = 50
 
     for idx, var in enumerate(prob_vars):
-        # Top row - old data
+
         h1 = axs[0][idx].hist2d(
             old_df["p"], old_df[var],
             bins=[p_bins, prob_bins],
@@ -138,7 +136,7 @@ def get_pid_data(keys, recalculate_maps=False):
             calculate_maps.append(f"Prob_{key}")
 
     if len(calculate_maps) > 0:
-        # need to calculate the maps again
+
         create_maps(calculate_maps)
 
     for key in keys:
@@ -178,7 +176,7 @@ def create_maps(calculate_maps):
     df = df.drop(['px_reco', 'py_reco', 'pz_reco'], axis=1)
     df = df[df["isFinal"] == 1]
 
-    # Create different df based on true ids
+
     abs_id = np.abs(df["id"])
     id_maps = {"e": 11, "mu": 13, "pi": 211, "k": 321, "p": 2212}
     part_data = {}
@@ -189,12 +187,12 @@ def create_maps(calculate_maps):
         print(f"{key}: {len(part_data[key])}")
     print("=" * 30)
 
-    # Create correlation and cov matrix
+
     corr_matrix = {}
     for key in part_data.keys():
         corr_matrix[key] = plot_prob_corr(part_data[key], calculate_maps, file=f"{key}_corr")
 
-    # Create interpolation maps currently using lin
+
     inter_dict = {}
     for key in part_data.keys():
         inter_dict[key] = create_prob_interpolators(part_data[key], calculate_maps, file=f"{key}_interpolators")

@@ -108,11 +108,11 @@ def plot_LCA_acc(df, version, log_dir='lightning_logs'):
 
     epochs = np.arange(len(trn_LCA_acc0))
 
-    # Plot dir
+
     outdir = f"{log_dir}/DFEI/version_{version}/plots"
     os.makedirs(outdir, exist_ok=True)
 
-    # Plot LCA acc
+
     f, ax = plt.subplots(figsize=(9, 6))
     ax.plot(epochs, trn_LCA_acc0, color="black", label="LCA=0")
     ax.plot(epochs, val_LCA_acc0, color="black", linestyle='dashed')
@@ -139,11 +139,11 @@ def plot_loss(df, version, loss, mode="DFEI", log_dir='lightning_logs'):
     val_LCA_loss = np.array(df[f"val_{loss}_loss"])
     epochs = np.arange(len(trn_LCA_loss))
 
-    # Plot dir
+
     outdir = f"{log_dir}/{mode}/version_{version}/plots"
     os.makedirs(outdir, exist_ok=True)
 
-    # Plot combined loss
+
     f, ax = plt.subplots(figsize=(9, 6))
     ax.plot(epochs, trn_LCA_loss, color="#4169E1", label="trn loss")
     ax.plot(epochs, val_LCA_loss, color="#B22222", label="val loss")
@@ -197,7 +197,7 @@ def plot_pv_missasso(pv_asso_ml, pv_asso_ip, pv_asso_ntracks, log_npvs,
     plt.savefig(f"{outdir}/{info_string}_pv_asso.png")
     plt.close()
 
-    # Getting the absolute numbers
+
     total_tracks = sum(pv_asso_ntracks.values())
     total_pred = sum(pv_asso_ml.values())
     total_ip = None

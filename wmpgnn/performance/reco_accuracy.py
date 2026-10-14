@@ -63,11 +63,11 @@ def write_to_file(file, cond, performance, entries=None, label=None):
 
 
 def obtain_reco_accuracy(df, version, signal, log_dir, model):
-    # Full signal
-    # Full OS inclusive
-    # Signal single B events
-    # Signal two B events
-    # Signal more than two B events
+
+
+
+
+
     file = f"{log_dir}/{model}/version_{version}/info_{signal}_reco.txt"
     cond = "a" if os.path.exists(file) else "w"
     with open(file, cond) as f:
@@ -105,7 +105,7 @@ def obtain_reco_accuracy(df, version, signal, log_dir, model):
     performance = calculate_accuracy(usage_df)
     write_to_file(file, "a", performance, entries=len(usage_df), label=" more than 2 B in event")
 
-    # bias checking
+
     usage_df = sig_df[np.sign(sig_df["B_id"]) == -1]
     performance = calculate_accuracy(usage_df)
     write_to_file(file, "a", performance, entries=len(usage_df), label=" negative id")

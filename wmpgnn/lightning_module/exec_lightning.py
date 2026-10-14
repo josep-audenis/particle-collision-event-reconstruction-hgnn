@@ -1,17 +1,21 @@
 from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from pytorch_lightning.callbacks import ModelCheckpoint
-from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
+from pytorch_lightning.loggers import CSVLogger
 
+import os
 import torch
 
 torch.multiprocessing.set_sharing_strategy("file_system")
 torch.set_float32_matmul_precision("high")
-seed_everything(42, workers=True)
+# Seed from env so the experiment suite can run N seeds per config (multi-seed
+# mean±std). Defaults to 42 to reproduce prior single-seed runs. Drives torch/
+# numpy/python global RNG → model weight init + the chunk loader's seeded shuffle.
+seed_everything(int(os.environ.get("TFG_SEED", "42")), workers=True)
 
 
 def training(module, configs, trn_loader=None, val_loader=None, chunkloader=None):
-    # module = torch.compile(module)
+
     model = configs["model"]
 
     monitoring_metric = configs.get("settings", {}).get("monitor_metric")
@@ -43,12 +47,11 @@ def training(module, configs, trn_loader=None, val_loader=None, chunkloader=None
     )
 
     log_dir = configs["log_dir"]
-    tb_logger = TensorBoardLogger(save_dir=log_dir, name=model)
-    csv_logger = CSVLogger(save_dir=log_dir, name=model, version=tb_logger.version)
+    csv_logger = CSVLogger(save_dir=log_dir, name=model)
 
     configs = configs["settings"]
     trainer = Trainer(
-        logger=[csv_logger, tb_logger],
+        logger=csv_logger,
         max_epochs=configs["epochs"],
         accelerator="auto",
         devices=configs["ngpu"],

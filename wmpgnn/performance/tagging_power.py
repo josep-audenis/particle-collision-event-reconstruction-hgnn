@@ -133,7 +133,7 @@ def analyze_tagging_power(df: pd.DataFrame, version: str, signal: str, log_dir: 
     classifier = EventClassifier()
     calc = CorrectnessCalculator()
 
-    # Prepare data
+
     raw_df = df.copy()
     df = analyzer.process_df(df)
     event_ids, event_counts = classifier.get_event_counts(df)
@@ -163,12 +163,12 @@ def analyze_tagging_power(df: pd.DataFrame, version: str, signal: str, log_dir: 
         analyzer.plot_tagging_power(metrics_single, signal_single_b["eta"], "eta", "singleB_tagging_power")
         label = f"1 B candidate present in event ({np.sum(event_counts == 1)}):"
         write_tagging_power(f, metrics_single, label)
-        # Obtaining correctness ratio and with regard to fragmentation tracks
+
         ratio = calc.calculate_prediction_correctness(signal_single_b)
         frag_results = calc.calculate_by_fragmentation(signal_single_b)
         write_correctness_ratio(f, ratio, frag_results)
 
-        """3. Two B events (opposite-side tagging possible)"""  # The OS can be not found, two B is on true level
+        """3. Two B events (opposite-side tagging possible)"""
         two_b_df = classifier.filter_n_b_events(df, 2, event_ids, event_counts)
         signal_two_b = two_b_df[two_b_df["SigMatch"] == 1]
         metrics_two = analyzer.compute_tagging_power_per_eta(signal_two_b)
@@ -182,14 +182,14 @@ def analyze_tagging_power(df: pd.DataFrame, version: str, signal: str, log_dir: 
         """4. B+/- specific analysis"""
         bpm_df = classifier.filter_bpm_events(two_b_df)
 
-        # Looking at the performance if the Signal has an B+/- as an OS B
+
         bpm_signal = bpm_df[bpm_df["SigMatch"] == 1]
         metrics_bpm_sig = analyzer.compute_tagging_power_per_eta(bpm_signal)
         analyzer.plot_tagging_power(metrics_bpm_sig, bpm_signal["eta"], "eta", "doubleB_ospm_tagging_power")
         label = f"Signal has OS B+/- Events: {len(bpm_signal)}"
         write_tagging_power(f, metrics_bpm_sig, label)
 
-        # The performance of the OS B+/- itself
+
         bpm_os = bpm_df[bpm_df["SigMatch"] == 0]
         metrics_bpm_os = analyzer.compute_tagging_power_per_eta(bpm_os)
         analyzer.plot_tagging_power(metrics_bpm_os, bpm_os["eta"], "eta", "osB_pm_tagging_power")
@@ -198,14 +198,14 @@ def analyze_tagging_power(df: pd.DataFrame, version: str, signal: str, log_dir: 
         write_tagging_power(f, metrics_bpm_os, label)
         f.write(f"B+/- charge reconstruction correctness: {charge_frac * 100:.2f}%\n")
 
-        # If based on sum of charge it matches the OS B+/- charge
+
         metrics_charge = analyzer.compute_tagging_power_per_eta(charge_correct_df)
         analyzer.plot_tagging_power(metrics_charge, charge_correct_df["eta"], "eta", "osB_pm_true_charge_tagging_power")
         label = "Charged correct OS B+/- Events:"
         write_tagging_power(f, metrics_charge, label)
 
         """5. Bias study of signal"""
-        # negative mc id
+
         neg_df = full_df[np.sign(full_df["B_id"]) == -1]
         metrics_full = analyzer.compute_tagging_power_per_eta(neg_df)
         analyzer.plot_tagging_power(metrics_full, neg_df["eta"], "eta", f"neg_tagging_power")
@@ -232,7 +232,7 @@ def analyze_tagging_power(df: pd.DataFrame, version: str, signal: str, log_dir: 
         ratio = calc.calculate_prediction_correctness(neg_sig_df)
         write_correctness_ratio(f, ratio)
 
-        # pos mc id
+
         pos_df = full_df[np.sign(full_df["B_id"]) == 1]
         metrics_full = analyzer.compute_tagging_power_per_eta(pos_df)
         analyzer.plot_tagging_power(metrics_full, pos_df["eta"], "eta", f"pos_tagging_power")

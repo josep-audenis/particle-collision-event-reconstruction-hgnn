@@ -19,17 +19,15 @@ if __name__ == "__main__":
     print("=" * 45)
     print("Plotting the mass distribution")
 
-    # Get the signal channel
+
     if args.SAMPLE.split("_")[1] == "inclusive":
         signal = "inclusive"
     else:
         signal = args.SAMPLE.split("_")[1] + "_" + args.SAMPLE.split("_")[2]
 
-    # Get the reco df
+
     reco_df = pd.read_csv(f"../analysis/{args.VERSION}/signal_reco_data_df_{args.SAMPLE}.csv")
     sig_df = reco_df[reco_df["SigLike"] == 1].copy()
     reco_df["M_B"] = reco_df.apply(compute_b_kinematics, axis=1)
 
 
-
-    import pdb; pdb.set_trace()

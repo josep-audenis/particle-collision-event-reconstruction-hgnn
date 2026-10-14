@@ -15,7 +15,7 @@ from wmpgnn.util.bfs import *
 
 class EventReconstruction:
     def __init__(self, configs):
-        # boolean whether to use true reconstruction or predicted reconstruction
+
         self.configs = configs["inference"]
         self.norm = obtain_normalization(configs)
         self.prob_nn_mask = torch.tensor([c.lower().startswith('prob') for c in self.norm.node_features])
@@ -50,16 +50,16 @@ class EventReconstruction:
     def reconstruct_heavyhadrons(self, outputs, ft_des=None, pv_des=None):
         graphs = outputs.to_data_list()
 
-        # Output weights
+
         node_weights = outputs["node_weights"]
         edge_weights = outputs["edge_weights"]
         lca = outputs[("tracks", "tracks")].lca
 
-        # Unfold normalization
+
         track_org_x = outputs["tracks"].org_x
         track_pid = outputs["tracks"].org_pid
 
-        # indexing + per graph mask creation
+
         track_batch = outputs["tracks"].batch
         pv_batch = outputs['pvs'].batch
         tr_tr_edge_idx = outputs[('tracks', 'tracks')].edge_index
@@ -67,12 +67,12 @@ class EventReconstruction:
 
         n_graphs = track_batch.max().item() + 1
         graph_ids = torch.arange(n_graphs, device=self.device)
-        track_masks = track_batch.unsqueeze(1) == graph_ids.unsqueeze(0)  # Shape: [n_tracks, n_graphs]
+        track_masks = track_batch.unsqueeze(1) == graph_ids.unsqueeze(0)
 
         precomputed_pv_desc = []
         precomputed_ft_desc = []
         for i in range(n_graphs):
-            # Create boolean mask to find per event information
+
             track_mask = track_masks[:, i]
             tr_tr_mask = track_masks[tr_tr_edge_idx[0], i] & track_masks[tr_tr_edge_idx[1], i]
             pv_mask = pv_batch == i
@@ -80,7 +80,7 @@ class EventReconstruction:
 
             graphs[i][("tracks", "tracks")].lca = lca[tr_tr_mask]
 
-            # Apply the pruning
+
             if self.configs.get("node_prune", True):
                 node_selbool = node_weights[track_mask] > self.configs["node_prune_thr"]
                 edge_mask = true_node_pruning(node_selbool, graphs[i], "tracks", [('tracks', 'to', 'tracks')])
@@ -91,7 +91,7 @@ class EventReconstruction:
             if self.configs.get("edge_prune", True):
                 edge_pruning(edge_selbool, graphs[i], ('tracks', 'to', 'tracks'))
 
-            # denorm information
+
             graph_track_x = track_org_x[track_mask]
             graph_track_pid = track_pid[track_mask]
             combined_features = torch.cat((graph_track_x, graph_track_pid), dim=1)
@@ -105,11 +105,11 @@ class EventReconstruction:
             sel_pid = torch.tensor([pid_dict[k] for k in pred_pid]).to(self.device)
             graph_track_pid = (sel_pid * charge).round().to(torch.int32)
 
-            # Add the original feature to the graph
+
             graphs[i]["tracks"].x = features
             graphs[i]["tracks"].pid = graph_track_pid
 
-            # Get the PV association of all tracks
+
             evt_tr_pv_edge_idx = tr_pv_edge_idx[:, tr_pv_mask]
             ntracks = torch.unique(evt_tr_pv_edge_idx[0]).shape[0]
             npvs = torch.unique(evt_tr_pv_edge_idx[1]).shape[0]
@@ -122,14 +122,14 @@ class EventReconstruction:
             else:
                 precomputed_pv_desc.append(None)
 
-            # get the ft decision of the selected B particles
+
             if ft_des is not None:
                 evt_ft_des = ft_des[track_mask][node_selbool]
                 precomputed_ft_desc.append(evt_ft_des.cpu())
             else:
                 precomputed_ft_desc.append(None)
 
-        # now multiprocess the reco
+
         args_list = [(graph.cpu(), pv_desc, ft_desc) for graph, pv_desc, ft_desc in
                      zip(graphs, precomputed_pv_desc, precomputed_ft_desc)]
         with ThreadPool(processes=1) as pool:
@@ -146,13 +146,13 @@ class EventReconstruction:
 
         graph, pv_des, ft_des = args
 
-        # Remove the edges which remain but are bkg due to lca score
+
         lca = torch.argmax(graph[("tracks", "tracks")].lca, dim=1)
         lca_bool = lca != 0
         lca = lca[lca_bool]
         edges = graph[("tracks", "tracks")].edge_index[:, lca_bool]
 
-        # Looping over B
+
         components = find_components_bfs(edges)
         res = []
         for comp in components:
@@ -168,11 +168,11 @@ class EventReconstruction:
             if matching_final and matching_lca:
                 sig_df["SigLike"] = 1
 
-            # Get PV association
-            # Get the pid
+
+
             sig_df["final_pid"] = ','.join(str(x.item()) for x in graph["tracks"].pid[nodes_indx])
             
-            # Get the individual scores stored as strings
+
             ft_score = ft_des[nodes_indx]
             sig_df["final_b_score"] = ','.join(str(x.item()) for x in ft_score[:, :1].squeeze())
             sig_df["final_bbar_score"] = ','.join(str(x.item()) for x in ft_score[:, 2:].squeeze())

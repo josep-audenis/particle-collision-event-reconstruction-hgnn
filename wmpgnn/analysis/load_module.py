@@ -39,7 +39,7 @@ def load_dfei_for_ift(configs):
 
 
 def get_bis_model(version: int, configs: Dict) -> str:
-    # find the model with the best performance in the checkpoints
+
     model = configs["model"]
     log_dir = configs["log_dir"]
     files = glob.glob(f"{log_dir}/{model}/version_{version}/checkpoints/*best-epoch*.ckpt")
@@ -55,9 +55,9 @@ def get_bis_model(version: int, configs: Dict) -> str:
 
 def load_module(configs: Dict, pos_weights:Dict, dfei_model=None, mode="simulation"):
     model = configs["model"]
-    # Checking if need to load from cpt
+
     load_from_cpt = configs[model]["cpt"]
-    if isinstance(configs[model]["cpt"], int):  # adjusting if passed an int
+    if isinstance(configs[model]["cpt"], int):
         bis_model = get_bis_model(load_from_cpt, configs)
     else:
         bis_model = configs[model]["cpt"]
@@ -99,7 +99,7 @@ def load_module(configs: Dict, pos_weights:Dict, dfei_model=None, mode="simulati
                     pos_weights=pos_weights,
                 )
             else:
-                #bis_model = "LHCb_logs/IFT/version_2/checkpoints/best-epoch=20-val_ft_loss=0.573.ckpt"
+
                 print("Loading from checkpoint")
                 print(bis_model)
                 print("=" * 30)

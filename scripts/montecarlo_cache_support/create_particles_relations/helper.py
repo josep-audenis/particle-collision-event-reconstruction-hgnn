@@ -43,7 +43,7 @@ def load_data(indir: str, file: str, mode: str, vars: list, sim: str = "pythia",
 
         df = particles.arrays(vars, library="pd")
 
-        # In bkg sample not all pvs are used
+
         if pv_req is not None:
             df = df[df["EventNumber"].isin(set(pv_req))]
 

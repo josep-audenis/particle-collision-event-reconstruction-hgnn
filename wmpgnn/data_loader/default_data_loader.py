@@ -57,11 +57,11 @@ def get_trn_val_loaders(configs):
     batch_size = configs["settings"]["batch_size"]
     trn_loader = DataLoader(trn_dataset, batch_size=batch_size, num_workers=ncpus * 2, drop_last=True, shuffle=True)
 
-    # Shuffle the initial dataset of validation as it is currently sorted by the samples
-    generator = torch.Generator()
+
+    generator = torch.Generator().manual_seed(42)
     shuffled_indices = torch.randperm(len(val_dataset), generator=generator).tolist()
     val_dataset_shuffled = Subset(val_dataset, shuffled_indices)
-    val_loader = DataLoader(val_dataset_shuffled, batch_size=batch_size,num_workers=ncpus * 2, drop_last=True)
+    val_loader = DataLoader(val_dataset_shuffled, batch_size=batch_size,num_workers=ncpus * 2, drop_last=False)
 
     return trn_loader, val_loader, weights, nevts
 
@@ -70,15 +70,18 @@ def get_tst_loader(configs, model="DFEI"):
     data_dir = configs["settings"]["data_dir"]
     ncpus = configs["settings"]["ncpu"]
     nfiles = get_nfiles(configs["evaluate"])
+    split = configs["evaluate"].get("split", "tst")
+    if split not in {"val", "tst"}:
+        raise ValueError(f"Unknown evaluation split: {split}")
 
     nevts = {"testing": {}}
 
-    print("Testing:")
+    print(f"Testing (split={split}):")
     load_tst_dataset = partial(load_dataset, configs=configs, mode="val")
     tst_dataset = []
     for sample, files in nfiles.items():
         nevts["testing"][sample] = 0
-        tst_paths = sorted(glob.glob(f'{data_dir}/{sample}/tst_data_*'))[:files]
+        tst_paths = sorted(glob.glob(f'{data_dir}/{sample}/{split}_data_*'))[:files]
         with ThreadPool(processes=ncpus) as pool:
             results = list(tqdm(pool.imap(load_tst_dataset, tst_paths), total=len(tst_paths),
                                 desc=f"Loading {sample} validation dataset"))
@@ -86,8 +89,8 @@ def get_tst_loader(configs, model="DFEI"):
             tst_dataset.extend(r)
             nevts["testing"][sample] += len(r)
 
-    # Shuffle the initial dataset of validation as it is currently sorted by the samples
-    generator = torch.Generator()
+
+    generator = torch.Generator().manual_seed(42)
     shuffled_indices = torch.randperm(len(tst_dataset), generator=generator).tolist()
     tst_dataset_shuffled = Subset(tst_dataset, shuffled_indices)
     tst_loader = DataLoader(tst_dataset_shuffled, batch_size=512, num_workers=2)

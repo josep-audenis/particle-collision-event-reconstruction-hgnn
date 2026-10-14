@@ -30,6 +30,44 @@ Then point `data_dir` to:
 data/montecarlo/cache_50000/DFEI_LHCb_LHCbcollision_normed_pt_data/
 ```
 
+## PID inputs: realistic vs true (leakage)
+
+`use_pid` selects the particle-ID input:
+
+- `"realistic"` — momentum-conditioned sampled detector response (`real_prob_*`).
+  **Use this for headline results.**
+- `"true"` — true Monte-Carlo PID (`Prob_*`). Perfect species ID an experiment
+  never has → inflated tagging power. **Oracle ceiling only**, label it as such.
+- `"None"` — no PID input.
+
+Both `Prob_*` and `real_prob_*` are cached (see `cacheing/main.py` node features),
+so switching does not require re-caching once the cache was built with both. The
+lightning modules emit a `CONTAMINATION` warning whenever `use_pid: "true"` is used.
+
+## Honest threshold / model selection (no test-set leakage)
+
+Prune thresholds (`inference.edge_prune_thr`, `inference.node_prune_thr`) and the
+choice between model versions must be selected on the **validation** split, then
+reported **once** on the test split. Selecting them on the test set (running the
+threshold grid on `tst` and picking the best) optimistically biases the result.
+
+Set the eval split in the config's `evaluate` block:
+
+```yaml
+evaluate:
+  sample: [ "00353851_inclusive" ]
+  nfiles: [ 10 ]
+  over_write: ""
+  split: val   # "val" for selection sweeps, "tst" (default) for the final number
+```
+
+Validation-split outputs are auto-tagged with `__val` in their filenames so they
+can never overwrite or be mistaken for the final test results. Protocol:
+
+1. Sweep thresholds / versions with `split: val`; compare the `__val` outputs.
+2. Fix the winning thresholds + version.
+3. Run that single config once with `split: tst` (default) → report this number.
+
 ## Event counts
 
 The Monte Carlo cache pipeline writes chunks of 1000 events by default. The

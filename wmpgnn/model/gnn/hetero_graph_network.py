@@ -23,13 +23,13 @@ class HeteroGraphNetwork(pl.LightningModule):
         if any([config["use_node_weights"], config["use_edge_weights"]]) and config["weighted_pass"]:
             self._weighted_pass = config["weighted_pass"]
 
-        # Edge, Node, Global block
+
         self._edge_block = HeteroEdgeBlock(config["MLP_forward"], edge_types)
         self._node_block = HeteroNodeBlock(config["MLP_forward"], node_types, edge_types)
         if self._use_globals:
             self._global_block = HeteroGlobalBlock(config["MLP_forward"], node_types, edge_types,
                                                    weighted_mp=self._weighted_pass)
-        # Inference layers
+
         self._node_mlps = {}
         self._edge_mlps = {}
         if config["use_node_weights"]:
@@ -46,14 +46,14 @@ class HeteroGraphNetwork(pl.LightningModule):
         self._node_models_model_dict = torch.nn.ModuleDict({str(i): j for i, j in self._node_mlps.items()})
 
         self._sigmoid = Sigmoid()
-        # nodes
+
         self.node_weights = {}
         self.node_logits = {}
-        # edges
+
         self.edge_weights = {}
         self.edge_logits = {}
 
-        # Pruning cuts for evaluate
+
         self.edge_prune = False
         self.node_prune = False
         self.prune_by_cut = False
@@ -67,10 +67,10 @@ class HeteroGraphNetwork(pl.LightningModule):
         self.edge_node_pruning_indices = {}
 
     def forward(self, graph, pid_nodes):
-        # Applying edge update
+
         node_input = self._edge_block(graph)
 
-        # Infer edges
+
         for edge_type in self.edge_types:
             if self._use_edge_weights:
                 graph_batch = node_input[edge_type[0]].batch[node_input[edge_type].edge_index[0]]
@@ -88,10 +88,10 @@ class HeteroGraphNetwork(pl.LightningModule):
                     self.edge_weights[edge_type] = self.edge_weights[edge_type][edge_indices, :]
                     edge_pruning(edge_indices, node_input, edge_type)
 
-        # Node update
+
         global_input = self._node_block(node_input, self.edge_weights)
 
-        # Node infer
+
         for node_type in self.node_types:
             if self._use_node_weights and node_type != "pvs":
                 self.node_logits[node_type] = self._node_mlps[node_type](global_input[node_type].x,
@@ -101,9 +101,9 @@ class HeteroGraphNetwork(pl.LightningModule):
                 self.node_weights[node_type] = torch.ones((graph[node_type].x.shape[0], 1)).to(self.device)
 
         if self.FT:
-            # self.node_logits["frag"] = self._node_mlps["frag"](global_input["tracks"].x, global_input["tracks"].batch)
-            # self.node_weights["frag"] = self._sigmoid(self.node_logits["frag"])
-            # FT, catting pid information before pass, as well as the nodes itself
+
+
+
             combined_graph = torch.cat([global_input["tracks"].x, pid_nodes], dim=1)
             combined_graph = torch.cat([combined_graph, self.node_weights['tracks']], dim=1)
             self.node_logits["ft"] = self._node_mlps["ft"](combined_graph, global_input["tracks"].batch)
@@ -122,7 +122,7 @@ class HeteroGraphNetwork(pl.LightningModule):
                     for key in edge_index.keys():
                         self.edge_weights[key] = self.edge_weights[key][edge_index[key]]
 
-        # Global update
+
         if self._use_globals:
             return self._global_block(global_input, self.edge_weights, self.node_weights)
         else:

@@ -120,7 +120,11 @@ def convert_mc_root(
     written: list[Path] = []
     evt_counter = 0
     chunk_start = start_offset
-    track_types = ["long"]
+    # Track-type coverage (D-tracks experiment). Default "long" reproduces the
+    # baseline; set TRACK_TYPES=long,down,up to add downstream/upstream tracks
+    # (more rest-of-event particles -> more OS/SS tagging info). Requires the
+    # ntuple to carry down_*/up_* branches (verified present for mc24).
+    track_types = [t for t in os.environ.get("TRACK_TYPES", "long").split(",") if t]
 
     def flush(end_evt: int) -> None:
         nonlocal result, chunk_start

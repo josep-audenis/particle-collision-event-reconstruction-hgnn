@@ -19,6 +19,7 @@ settings:
   node_sel: "true"  # Pruner used to apply the graph mode above: "true", "zeros", "default"
   pv_model: 1 # Initial PV association: DFEI_model_number, "true", "ip", "None"
   calibration: false
+  mask_signal_inputs: true # Mask charge and PID for tracks from the signal B before IFT
 
 inference:
   FT: True
@@ -40,7 +41,7 @@ evaluate:
 
 IFT:
   dfei_model: 1 # DFEI model which is used within IFT: "None", "DFEI_version_number"
-  use_pid: "true" # Adding pid information in DFEI model: "None", "toutputsrue", "realistic"
+  use_pid: "realistic" # Adding pid information in DFEI model: "None", "true", "realistic"
   lca_input: "probabilities" # IFT track-track LCA input: "argmax" or "probabilities"
   cpt: None # Loading checkpoint to continue training: None, DFEI_version_number, "path.ckpt"
   node_types: [ 'tracks', 'pvs' ]  # Graph node settings

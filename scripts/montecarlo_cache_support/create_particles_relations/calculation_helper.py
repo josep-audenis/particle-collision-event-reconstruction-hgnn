@@ -61,7 +61,7 @@ def compute_particle_PID(particles: pd.DataFrame, mode: str):
         particles['Prob_ghost'] = particles["Prob_ghost"].values
         particles['Prob_gamma'] = particles["Prob_pi"].values * 0
         particles['Prob_pi0'] = particles[
-                                    "Prob_pi"].values * 0  # currently dont hold that information  since no neutral
+                                    "Prob_pi"].values * 0
 
     return particles
 
@@ -91,12 +91,12 @@ def calculate_LCA(relations_buffer, prefix=''):
     if len(relations_buffer) == 0:
         return relations_buffer
 
-    # Maximum expected value for the LCA components, used to translate the integer LCA values into a one-hot encoder
+
     max_LVA_value = 10
 
-    # Select the pairs of particles that come from the same primary heavy hadron
+
     signal_pairs = relations_buffer[relations_buffer['FromSameHeavyHadron'] == 1].copy()
-    # Compute the LCA values for the signal pairs
+
     if len(signal_pairs) > 0:
         LCA_output = np.array(signal_pairs.apply(
             lambda x: LCA(x['p1_' + prefix + 'MotherList'], x['p2_' + prefix + 'MotherList'],
@@ -108,7 +108,7 @@ def calculate_LCA(relations_buffer, prefix=''):
             signal_pairs[prefix + 'LCA_class' + str(i)] = np.array(
                 (signal_pairs[prefix + 'LCA_values'].to_numpy(dtype=np.int32) == i), dtype=np.int32)
 
-    # Port the previous information to the whole set of pairs, zero-padding where needed
+
     relations_buffer[prefix + 'LCA'] = np.array(0, dtype=np.int32)
     relations_buffer[prefix + 'LCA_ids'] = np.array(0, dtype=np.int32)
     if len(signal_pairs) > 0:
@@ -122,7 +122,7 @@ def calculate_LCA(relations_buffer, prefix=''):
             relations_buffer.loc[(relations_buffer['FromSameHeavyHadron'] == 1), prefix + 'LCA_class' + str(i)] = \
                 signal_pairs[prefix + 'LCA_class' + str(i)].to_numpy(dtype=np.int32)
 
-    # All the background-like pairs will have a LVA value equal to 0
+
     relations_buffer.loc[(relations_buffer['FromSameHeavyHadron'] == 0), prefix + 'LCA_class0'] = np.array(1,
                                                                                                            dtype=np.int32)
 
@@ -144,7 +144,7 @@ def calculate_doca(relations_buffer, reco):
     else:
         suffix = ''
 
-    # vector distance at t1=0, t2=0
+
     relations_buffer['delta_x0' + suffix] = relations_buffer['p1_xProd' + suffix] - relations_buffer[
         'p2_xProd' + suffix]
     relations_buffer['delta_y0' + suffix] = relations_buffer['p1_yProd' + suffix] - relations_buffer[
@@ -152,7 +152,7 @@ def calculate_doca(relations_buffer, reco):
     relations_buffer['delta_z0' + suffix] = relations_buffer['p1_zProd' + suffix] - relations_buffer[
         'p2_zProd' + suffix]
 
-    # Define particle direction as unit vector
+
     p1_p = np.sqrt(relations_buffer['p1_px' + suffix] ** 2 + relations_buffer['p1_py' + suffix] ** 2 + relations_buffer[
         'p1_pz' + suffix] ** 2)
     p2_p = np.sqrt(relations_buffer['p2_px' + suffix] ** 2 + relations_buffer['p2_py' + suffix] ** 2 + relations_buffer[
@@ -164,7 +164,7 @@ def calculate_doca(relations_buffer, reco):
     relations_buffer['u2_y' + suffix] = relations_buffer['p2_py' + suffix] / p2_p
     relations_buffer['u2_z' + suffix] = relations_buffer['p2_pz' + suffix] / p2_p
 
-    # Solution of differential eq. d2|DeltaR|/dt1 dt2
+
     relations_buffer['delta_r0_dot_u1' + suffix] = relations_buffer['delta_x0' + suffix] * relations_buffer[
         'u1_x' + suffix] + relations_buffer['delta_y0' + suffix] * relations_buffer['u1_y' + suffix] + relations_buffer[
                                                        'delta_z0' + suffix] * relations_buffer['u1_z' + suffix]
@@ -175,7 +175,7 @@ def calculate_doca(relations_buffer, reco):
                                              relations_buffer['u1_y' + suffix] * relations_buffer['u2_y' + suffix] + \
                                              relations_buffer['u1_z' + suffix] * relations_buffer['u2_z' + suffix]
 
-    # Computation of the DOCA for the cases in which the momenta of the particles are parallel
+
     relations_case1 = relations_buffer[relations_buffer['u1_dot_u2' + suffix] == 1.].copy()
     relations_case1['DOCA' + suffix] = np.sqrt(
         relations_case1['delta_x0' + suffix] ** 2 + relations_case1['delta_y0' + suffix] ** 2 + relations_case1[
@@ -185,7 +185,7 @@ def calculate_doca(relations_buffer, reco):
                  'u1_z' + suffix, 'u2_x' + suffix, 'u2_y' + suffix, 'u2_z' + suffix, 'delta_r0_dot_u1' + suffix,
                  'delta_r0_dot_u2' + suffix, 'u1_dot_u2' + suffix], inplace=True)
 
-    # Computation of the doca in the rest of the cases
+
     relations_case2 = relations_buffer[relations_buffer['u1_dot_u2' + suffix] != 1.].copy()
     relations_case2['t1' + suffix] = - ((relations_case2['delta_r0_dot_u1' + suffix] + relations_case2[
         'u1_dot_u2' + suffix] * relations_case2['delta_r0_dot_u2' + suffix])
@@ -194,7 +194,7 @@ def calculate_doca(relations_buffer, reco):
         'u1_dot_u2' + suffix] * relations_case2['delta_r0_dot_u1' + suffix])
                                       / (1. - relations_case2['u1_dot_u2' + suffix] ** 2))
 
-    # Vector distance at minimum
+
     relations_case2['delta_x' + suffix] = relations_case2['delta_x0' + suffix] + relations_case2['u1_x' + suffix] * \
                                           relations_case2['t1' + suffix] - relations_case2['u2_x' + suffix] * \
                                           relations_case2['t2' + suffix]
@@ -213,7 +213,7 @@ def calculate_doca(relations_buffer, reco):
                  'delta_r0_dot_u2' + suffix, 'u1_dot_u2' + suffix, 't1' + suffix, 't2' + suffix, 'delta_x' + suffix,
                  'delta_y' + suffix, 'delta_z' + suffix], inplace=True)
 
-    # Update the relations array by combining the two different cases
+
     return pd.concat([relations_case1, relations_case2], ignore_index=True, sort=True)
 
 

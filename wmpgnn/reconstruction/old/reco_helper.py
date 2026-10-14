@@ -39,7 +39,7 @@ def compute_LCA(anc1, anc2, max_depth):
         return 0
 
     common_ancestors = intersect1d(anc1, anc2).tolist()
-    # IMPORTANT!!: the order of the ancestor indices reconstructed by this algorithm is the opposite of the one used in simulation, so the order must be reversed in this case.
+
     common_ancestors.reverse()
 
     if (common_ancestors == []):
@@ -73,18 +73,18 @@ def reconstruct_decay(triang_LCA_matrix, particle_keys, ax=0, particle_ids=[], t
 
     max_full_chain_depth_in_event = -1
 
-    # Create the global LCA matrix for the event, and remove null connections
+
     current_LCA_matrix = pd.DataFrame(triang_LCA_matrix, columns=[
         'senders', 'receivers', 'LCA_dec'])
     current_LCA_matrix = current_LCA_matrix[current_LCA_matrix['LCA_dec'] > 0]
 
-    # Check against empty events
+
     if current_LCA_matrix.empty:
         print('No particles found.')
         print(truth_level_simulation)
         return {}, num_clusters_per_order, max_full_chain_depth_in_event
 
-    # Create a dictionary to store the true ID of the ancestors
+
 
     if truth_level_simulation:
         cluster_label_dict = pd.DataFrame(triang_LCA_matrix, columns=[
@@ -93,12 +93,12 @@ def reconstruct_decay(triang_LCA_matrix, particle_keys, ax=0, particle_ids=[], t
         max_full_chain_depth_in_event = max(
             cluster_label_dict['TrueFullChainLCA'].values)
 
-    # Define an auxiliary matrix to later identify connected clusters
+
     num_nodes = len(particle_keys)
 
     clustering_adjacency_matrix = np.zeros((num_nodes, num_nodes))
 
-    # Get the maximum of the LCA matrix
+
     max_depth = np.max(current_LCA_matrix['LCA_dec'])
 
     adj_links_list = []
@@ -110,7 +110,7 @@ def reconstruct_decay(triang_LCA_matrix, particle_keys, ax=0, particle_ids=[], t
         LCA_matrix_subset = current_LCA_matrix[current_LCA_matrix['LCA_dec'] == 1]
         if LCA_matrix_subset.empty == False:
 
-            # Reset the clustering adjacency matrix, and set it up to study the next LCA order
+
             clustering_adjacency_matrix = np.zeros(
                 (composite_counter + 1, composite_counter + 1))
 
@@ -123,13 +123,13 @@ def reconstruct_decay(triang_LCA_matrix, particle_keys, ax=0, particle_ids=[], t
             connected_components = [
                 list(x) for x in nx.connected_components(nx_graph) if len(x) > 1]
 
-            # Inspect the separate clusters iteratively
+
             cl_counter = 0
             for indices_in_cluster in connected_components:
 
                 cl_counter += 1
 
-                # Label the new cluster
+
                 composite_counter += 1
                 num_clusters_per_order[order] += 1
                 if truth_level_simulation:
@@ -142,14 +142,14 @@ def reconstruct_decay(triang_LCA_matrix, particle_keys, ax=0, particle_ids=[], t
                         'reco_c' + str(composite_counter - num_nodes + 1))
                 node_colors.append('#91b39d')
 
-                # Pass the information to the reconstructed adjacency matrix
+
                 for ind in indices_in_cluster:
                     new_df = pd.DataFrame({'senders': [ind],
                                            'receivers': [composite_counter],
                                            'link': [1]})
                     adj_links_list.append(new_df)
 
-                # If there was any connection between the other nodes and any of the particles in the new cluster, connect those nodes to the new cluster as appropriate
+
                 for sender in range(composite_counter):
                     if sender not in indices_in_cluster:
                         proxy_links = current_LCA_matrix[
@@ -173,7 +173,7 @@ def reconstruct_decay(triang_LCA_matrix, particle_keys, ax=0, particle_ids=[], t
                                         proxy_links['senders'].iloc[0],
                                         proxy_links['receivers'].iloc[0]), 'LCA_id_label']
 
-                # Remove connections with the nodes inside the new cluster
+
                 current_LCA_matrix = current_LCA_matrix[(current_LCA_matrix['senders'].isin(
                     indices_in_cluster) == False) & (current_LCA_matrix['receivers'].isin(indices_in_cluster) == False)]
 
@@ -183,7 +183,7 @@ def reconstruct_decay(triang_LCA_matrix, particle_keys, ax=0, particle_ids=[], t
     if (adj_links_list):
         adj_links = pd.concat(adj_links_list, ignore_index=True)
 
-    # Plot the tree
+
     if ax != 0:
         G = nx.DiGraph()
 
@@ -206,7 +206,7 @@ def reconstruct_decay(triang_LCA_matrix, particle_keys, ax=0, particle_ids=[], t
         nx.draw_networkx_labels(G, pos, font_size=14,
                                 bbox=label_options, ax=ax)
 
-    # Compute information per separated decay chain
+
 
     final_adjacency_matrix = np.zeros(
         (composite_counter + 1, composite_counter + 1))
@@ -224,7 +224,7 @@ def reconstruct_decay(triang_LCA_matrix, particle_keys, ax=0, particle_ids=[], t
 
     for nodes_in_cluster in connected_components:
 
-        # Identify the keys of the final particles in the cluster, and list them in ascending order
+
         index_from_key_dict = {}
         for node in nodes_in_cluster:
             if node < num_nodes:
@@ -233,7 +233,7 @@ def reconstruct_decay(triang_LCA_matrix, particle_keys, ax=0, particle_ids=[], t
         ordered_keys_in_cluster.sort()
         clustered_keys.append(ordered_keys_in_cluster)
 
-        # Identify the list of ancestors for each final state particle
+
         ancestor_lists_in_cluster = []
         for k in ordered_keys_in_cluster:
             node_index = index_from_key_dict[k]
@@ -248,7 +248,7 @@ def reconstruct_decay(triang_LCA_matrix, particle_keys, ax=0, particle_ids=[], t
             ancestor_lists_in_cluster.append(ancestor_list)
         max_decay_length = max([len(x) for x in ancestor_lists_in_cluster])
 
-        # Compute the LCA values and concatenate them following a given order
+
         concatenated_LCA_values_in_cluster = []
         for in1 in range(len(ordered_keys_in_cluster)):
             for in2 in range(len(ordered_keys_in_cluster)):
@@ -258,7 +258,7 @@ def reconstruct_decay(triang_LCA_matrix, particle_keys, ax=0, particle_ids=[], t
         clustered_concatenated_LCA_values.append(
             concatenated_LCA_values_in_cluster)
 
-    # Store the cluster information in a dictionary, with entries given by the smallest key value
+
     cluster_dict = {}
     for ic in range(len(connected_components)):
         cluster_dict[clustered_keys[ic][0]] = {

@@ -7,9 +7,9 @@ from create_collision_maps import *
 from create_events import *
 
 if __name__ == '__main__':
-    # File combines signal and background pp collision to simulate LHCb pileup
-    # python main.py --infile GeneratedParticles_Bs_Jpsiphi_00000000_00039999.root --dir /eos/lhcb/user/y/yukaiz/DFEI_data --sim pythia --bkg GeneratedParticles_background_00000000_00399999.root --nu 7.6
-    # python main.py --infile GeneratedParticles_inclusive_00000000_00000999.root --dir /eos/lhcb/user/y/yukaiz/DFEI_data --sim LHCb
+
+
+
     usage = "usage: %prog [options]"
     parser = OptionParser(usage)
     parser.add_option("", "--infile", type=str, default=None,
@@ -57,7 +57,7 @@ if __name__ == '__main__':
         print("Background file  :", option.BKG)
         sig_mode, start, end = get_signal(option.INFILE)
 
-        # Setting seed based on sig file name
+
         np.random.seed(get_rndm_seed(option.INFILE))
 
         nu_suffix = "singlecollision"

@@ -40,7 +40,7 @@ evaluate:
 
 IFT:
   dfei_model: "None" # DFEI model which is used within IFT: "None", "DFEI_version_number"
-  use_pid: "true" # Adding pid information in DFEI model: "None", "toutputsrue", "realistic"
+  use_pid: "true" # Adding pid information in DFEI model: "None", "true", "realistic"
   cpt: None # Loading checkpoint to continue training: None, DFEI_version_number, "path.ckpt"
   node_types: [ 'tracks', 'pvs' ]  # Graph node settings
   edge_types: [ "tracks_tracks", "tracks_pvs" ]  # Graph edge settings

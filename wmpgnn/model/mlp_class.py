@@ -50,7 +50,7 @@ class MLP(torch.nn.Module):
             channel_list = [hidden_channels] * (num_layers - 1)
             channel_list = [in_channels] + channel_list + [out_channels]
 
-        # Only allow passing of
+
         assert isinstance(channel_list, (tuple, list))
         assert len(channel_list) >= 2
         self.channel_list = channel_list

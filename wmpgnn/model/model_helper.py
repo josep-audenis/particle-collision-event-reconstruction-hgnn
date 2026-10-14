@@ -25,7 +25,7 @@ def get_op_trafo(config, node_types, edge_types):
     edge_models = {}
     node_models = {}
 
-    # Edge trafo
+
     if config["tr_tr_edge_op"] is not None:
         edge_models[('tracks', 'to', 'tracks')] = lambda: nn.Linear(16, config["tr_tr_edge_op"])
     else:
@@ -35,7 +35,7 @@ def get_op_trafo(config, node_types, edge_types):
     else:
         edge_models[('tracks', 'to', 'pvs')] = lambda: nn.Identity()
 
-    # Node trafo
+
     if config["tr_node_op"] != "None":
         node_models["tracks"] = lambda: nn.Linear(16, config["tr_node_op"])
     else:
@@ -45,7 +45,7 @@ def get_op_trafo(config, node_types, edge_types):
     else:
         node_models["pvs"] = lambda: nn.Identity()
 
-    # Global trafo
+
     if config["global_node_op"] != "None":
         global_fn = lambda: nn.Linear(16, config["global_node_op"])
     else:
@@ -66,12 +66,12 @@ def get_IFT_model(config, node_types, edge_types):
     use_node_weights = config["node_infer"]
     use_edge_weights = config["edge_infer"]
 
-    # temporary stuff
+
     weight_mlp_channels = 1
     weight_mlp_layers = 1
     weighted_mp = False
 
-    mlp = lambda: MLP(mlp_layer, norm=norm, drop_out=dropout)  # mlp for GN blocks update
+    mlp = lambda: MLP(mlp_layer, norm=norm, drop_out=dropout)
 
     blocks = []
     for i in range(n_blocks):

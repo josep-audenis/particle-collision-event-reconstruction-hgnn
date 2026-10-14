@@ -1,5 +1,6 @@
 import gc
 import glob
+import os
 from tqdm import tqdm
 
 from multiprocessing.pool import ThreadPool
@@ -16,7 +17,7 @@ from wmpgnn.data_loader.helper import *
 
 
 class ChunkDataset(IterableDataset):
-    # Loading a chunk of the dataset to cpu memory instead of all files
+
     def __init__(self, file_paths, configs, mode="train", n_chunks=32):
         super().__init__()
         self.file_paths = file_paths
@@ -97,7 +98,7 @@ class ChunkDataset(IterableDataset):
             raise NotImplementedError
 
     def __iter__(self):
-        # assuming 4 num workers which each want to load a chunk
+
         worker_info = torch.utils.data.get_worker_info()
         if worker_info is None:
             iter_start = 0
@@ -109,21 +110,21 @@ class ChunkDataset(IterableDataset):
             iter_end = min(iter_start + per_worker, self.n_chunks)
 
         for chunk_number in range(iter_start, iter_end):
-            # for chunk_number in range(self.n_chunks):
+
             chunk_events = self._load_chunk(chunk_number)
 
-            # create index
+
             idx = torch.arange(0, len(chunk_events))
             if self.mode == "train":
                 idx = idx[torch.randperm(len(idx))]
             else:
-                # val and test are shuffled
+
                 g = torch.Generator()
                 g.manual_seed(self.seeds[self.seed_tracker].item())
                 self.seed_tracker += 1
                 idx = idx[torch.randperm(len(idx), generator=g)]
 
-            # Yield events in shuffled order
+
             for i, i_idx in enumerate(idx):
                 yield chunk_events[i_idx]
 
@@ -138,7 +139,7 @@ class ChunkDataset(IterableDataset):
 
 
 class ChunkLoader(pl.LightningDataModule):
-    # Data container for pytorch lightning module
+
     def __init__(self, configs, trn_dataset=None, val_dataset=None, tst_dataset=None, batch_size=None, num_workers=None):
         super().__init__()
         self.trn_dataset = trn_dataset
@@ -150,7 +151,7 @@ class ChunkLoader(pl.LightningDataModule):
             self.batch_size = batch_size
         else:
             self.batch_size = self.configs["settings"]["batch_size"]
-        if isinstance(num_workers, int):  # we need to be cautious to not load too much to cpu mem
+        if isinstance(num_workers, int):
             self.num_workers = num_workers
         else:
             self.num_workers = self.configs["settings"]["ncpu"] * 2
@@ -193,12 +194,12 @@ def get_trn_val_loaders(_configs) -> ChunkLoader:
     for sample, files in nfiles.items():
         path_dict[sample] = sorted(glob.glob(f'{data_dir}/{sample}/trn_data_*'))[:files]
 
-    # Number of chunks definition and safeguard for the files per chunk to be less than 8
+
     min_files\
         = min(len(v) for v in path_dict.values() if len(v) > 0)
     total_files = sum(len(v) for v in path_dict.values())
     num_chunks = np.ceil(min_files / num_workers).astype(int)
-    # Safeguard: increase chunks until files_per_chunk < 8, this can be adapted
+
     while total_files / num_chunks >= 8:
         num_chunks += num_workers
     print(f"Number of chunks: {num_chunks}")
@@ -218,14 +219,18 @@ def get_trn_val_loaders(_configs) -> ChunkLoader:
 def get_tst_loader(_configs) -> ChunkLoader:
     data_dir = _configs["settings"]["data_dir"]
     nfiles = get_nfiles(_configs["evaluate"])
+    split = _configs["evaluate"].get("split", "tst")
+    if split not in {"val", "tst"}:
+        raise ValueError(f"Unknown evaluation split: {split}")
 
-    """Testing"""
     path_dict = {"testing": []}
     for sample, files in nfiles.items():
-        path_dict["testing"].append(sorted(glob.glob(f'{data_dir}/{sample}/tst_data_*'))[:files])
+        path_dict["testing"].append(sorted(glob.glob(f'{data_dir}/{sample}/{split}_data_*'))[:files])
     path_dict["testing"] = sum(path_dict["testing"], [])
-    # Each file is saved individually in a chunk
-    batch_size = 512  # increased bs possible during testing
+
+    # Eval batch. 512 spikes RAM/GPU on big-graph datasets (Bs-200k SIGKILL/OOM);
+    # 128 is safe and eval is not throughput-critical. Override via EVAL_BATCH.
+    batch_size = int(os.environ.get("EVAL_BATCH", "128"))
     tst_dataset = ChunkDataset(path_dict, _configs, mode="test", n_chunks=len(path_dict["testing"]))
 
     return ChunkLoader(_configs, tst_dataset=tst_dataset, batch_size=batch_size, num_workers=2)

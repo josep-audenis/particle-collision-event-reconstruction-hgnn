@@ -9,7 +9,7 @@ def metrics_eval(metrics_path, configs, version):
     log_dir = configs["log_dir"]
     model = configs["model"]
 
-    # Removing empty row and so on
+
     metrics = pd.read_csv(metrics_path)
     metrics = metrics.groupby('epoch').agg(lambda x: x.dropna().iloc[0] if not x.dropna().empty else None).reset_index()
     if configs["inference"].get("LCA", False) and model == "DFEI":
@@ -26,7 +26,7 @@ def metrics_eval(metrics_path, configs, version):
 
 
 def plot_sig_pv_missasso(df, version, signal, log_dir="lightning_logs"):
-    # Per track quantity
+
     if "inclusive" not in signal:
         sig_df = df[df["SigMatch"] == 1]
     else:
@@ -55,7 +55,7 @@ def plot_sig_pv_missasso(df, version, signal, log_dir="lightning_logs"):
             pv_log["pv_corr_ip"][npvs[i]] += np.sum(evt_true_pv == evt_minIP_pv)
             pv_log["pv_total"][npvs[i]] += evt_true_pv.shape[0]
 
-        # write to disk
+
         label = f"signal_{selbool}" if selbool is not None else "signal_no_selection"
         temp = plot_pv_missasso(pv_log["pv_corr_ml"], pv_log["pv_corr_ip"], pv_log["pv_total"], pv_log["npvs"],
                                 _version, _signal, label, log_dir=log_dir)
@@ -70,7 +70,7 @@ def plot_sig_pv_missasso(df, version, signal, log_dir="lightning_logs"):
 
 
 def plot_sig_b_system_pv_missasso(df, version, signal, log_dir="lightning_logs"):
-    # B level quantity
+
     if "inclusive" not in signal:
         sig_df = df[df["SigMatch"] == 1]
     else:
@@ -92,7 +92,7 @@ def plot_sig_b_system_pv_missasso(df, version, signal, log_dir="lightning_logs")
         evt_pred_pv = int(pred_pv[i])
         pv_log["pv_corr_ml"][npvs[i]] += evt_pred_pv == evt_true_pv[0]
         pv_log["pv_total"][npvs[i]] += 1
-    # write to disk
+
     label = f"signal_b_system"
     res = plot_pv_missasso(pv_log["pv_corr_ml"], None, pv_log["pv_total"], pv_log["npvs"],
                      version, signal, label, log_dir=log_dir)
@@ -103,21 +103,21 @@ def process_ft(df, sig_df, version, signal, log_dir="lightning_logs"):
     pattern = re.compile(r"bbar_ft_score_(\d+)")
     ft_layers = [int(match.group(1)) for k in df for match in [pattern.match(k)] if match]
 
-    # Plot the node level output
+
     for i in ft_layers:
-        bbar_score = 1 - df[f"bbar_ft_score_{i}"]  # optimal 0
-        b_score = df[f"b_ft_score_{i}"]  # optimal 1
+        bbar_score = 1 - df[f"bbar_ft_score_{i}"]
+        b_score = df[f"b_ft_score_{i}"]
         plot_weights(b_score, bbar_score, [f"ft_decision_{i}", "b", "bbar"], version,
                      model="IFT", channel=signal, log_dir=log_dir, suffix='tagging_weights')
 
-    # Plot the B particle decision
+
     selbool = sig_df["AllParticles"] == 1
     has_signal = np.sum(sig_df["SigMatch"]) != 0
     if has_signal:
         sig_selbool = sig_df["SigMatch"] == 1
         sig_ch_df = sig_df[selbool * sig_selbool]
         rem_B_df = sig_df[selbool * ~sig_selbool]
-        # Plotting signal B results
+
         bbar_selbool = np.sign(sig_ch_df["B_id"]) == 1
         b_selbool = np.sign(sig_ch_df["B_id"]) == -1
         b_dec = sig_ch_df["ft_b_score"][b_selbool]
@@ -125,7 +125,7 @@ def process_ft(df, sig_df, version, signal, log_dir="lightning_logs"):
         plot_weights(b_dec, bbar_dec, [f"signal_b_id_decision", "b", "bbar"], version,
                      model="IFT", channel=signal, log_dir=log_dir, suffix='tagging_weights')
 
-        # Plot the weights of the final state particles
+
         b_dec_final = np.array(
             [float(x) for item in sig_ch_df["final_b_score"][b_selbool].values for x in item.split(',')])
         bbar_dec_final = 1 - np.array(
@@ -144,7 +144,7 @@ def process_ft(df, sig_df, version, signal, log_dir="lightning_logs"):
         plot_weights(b_dec, bbar_dec, [f"OS{b}_id_decision", "b", "bbar"], version,
                      model="IFT", channel=signal, log_dir=log_dir, suffix='tagging_weights')
 
-        # Plot the weights of the final state particles
+
         b_dec_final = np.array(
             [float(x) for item in rem_B_df["final_b_score"][b_selbool].values for x in item.split(',')])
         bbar_dec_final = 1 - np.array(

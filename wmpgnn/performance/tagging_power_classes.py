@@ -22,13 +22,13 @@ hep.style.use(hep.style.LHCb2)
 @dataclass
 class TaggingMetrics:
     """Container for tagging performance metrics with uncertainties."""
-    # eta mistag binned
+
     eta_wrong_fraction: tuple[np.array, np.array]
     eta_power: tuple[np.array, np.array]
-    # binned in npvs
+
     npvs_wrong_fraction: tuple[np.array, np.array]
     npvs_power: tuple[np.array, np.array]
-    # Combined quantity
+
     wrong_fraction: tuple[float, float]
     power: tuple[float, float]
     epsilon: tuple[float, float]
@@ -77,10 +77,10 @@ class TaggingPowerAnalyzer:
     @staticmethod
     def calculate_tagging_power(num_right: np.ndarray, num_wrong: np.ndarray,
                                 num_unclassified: np.ndarray) -> Tuple[
-        Tuple[np.ndarray, np.ndarray],  # wrong_fraction
-        Tuple[np.ndarray, np.ndarray],  # power
-        Tuple[np.ndarray, np.ndarray],  # efficiency
-        Tuple[np.ndarray, np.ndarray],  # d_squared
+        Tuple[np.ndarray, np.ndarray],
+        Tuple[np.ndarray, np.ndarray],
+        Tuple[np.ndarray, np.ndarray],
+        Tuple[np.ndarray, np.ndarray],
     ]:
         """Calculate tagging efficiency and power metrics."""
         num_right = np.asarray(num_right, dtype=float)
@@ -135,7 +135,7 @@ class TaggingPowerAnalyzer:
         return df
 
     def _calculate_per_eta_bin(self, df: pd.DataFrame, mode: str) -> Tuple[
-        List, List, List]:  # this we can adapt for npvs and eta
+        List, List, List]:
         """Calculate tagging statistics for each eta bin."""
         num_right, num_wrong, num_unclassified = [], [], []
         if mode == "eta":
@@ -151,11 +151,11 @@ class TaggingPowerAnalyzer:
             in_bin = (var >= configs.bins[i]) & (var < configs.bins[i + 1])
             bin_df = df[in_bin]
 
-            # Count unclassified events
+
             classified_mask = (bin_df["ft_b_score"] > 0.5) | (bin_df["ft_bbar_score"] > 0.5)
             unclassified = len(bin_df) - np.sum(classified_mask)
 
-            # Determine true and predicted tags
+
             true_tag = np.sign(bin_df["B_id"])
             predicted_tag = np.argmax(bin_df[["ft_b_score", "ft_bbar_score"]], axis=1) * 2 - 1
 
@@ -174,11 +174,11 @@ class TaggingPowerAnalyzer:
         eta_num_right, eta_num_wrong, eta_num_unclassified = self._calculate_per_eta_bin(df, "eta")
         npvs_num_right, npvs_num_wrong, npvs_num_unclassified = self._calculate_per_eta_bin(df, "npvs")
 
-        # Per-bin metrics
+
         eta_res = self.calculate_tagging_power(eta_num_right, eta_num_wrong, eta_num_unclassified)
         npvs_res = self.calculate_tagging_power(npvs_num_right, npvs_num_wrong, npvs_num_unclassified)
 
-        # Combined metrics
+
         comb_res = self.calculate_tagging_power(
             np.sum(eta_num_right), np.sum(eta_num_wrong), np.sum(eta_num_unclassified)
         )
@@ -188,7 +188,7 @@ class TaggingPowerAnalyzer:
     def plot_tagging_power(self, metrics: TaggingMetrics, underlying_dist: np.ndarray, var: str = "eta",
                            label: str = "tagging_power"):
 
-        # here we can switch between eta and npvs
+
         """Plot tagging power/wrong fraction vs misstag/npvs probability."""
         if var == "eta":
             power = metrics.eta_power
@@ -203,14 +203,14 @@ class TaggingPowerAnalyzer:
 
         fig, ax = plt.subplots(figsize=(9, 6))
 
-        # Plot underlying distribution
+
         if len(underlying_dist) > 0:
             weights = np.ones_like(underlying_dist) / len(underlying_dist)
             ax.hist(underlying_dist, bins=config.bins,
                     label=rf"Underlying {config.name} distribution",
                     color="grey", weights=weights / 2 * 100)
 
-        # Plot metrics
+
         ax.errorbar(config.centers, power[0], xerr=config.x_err, yerr=power[1],
                     fmt='o', color="#B22222", label="Tagging Power")
         ax.errorbar(config.centers, wrong_fraction[0], xerr=config.x_err, yerr=wrong_fraction[1],

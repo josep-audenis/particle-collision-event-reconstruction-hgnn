@@ -18,7 +18,7 @@ class DFEILightningModule(L.LightningModule):
         self.configs = configs["inference"]
         self.model = model
 
-        # Those function are not used however in the ckpt information is saved, and thus it needs to be loaded in
+
         if self.configs["LCA"]:
             self.lca_criterion = nn.CrossEntropyLoss(weight=torch.ones(4))
         if self.configs["node_prune"]:
@@ -28,10 +28,10 @@ class DFEILightningModule(L.LightningModule):
         if self.configs["pv_asso"]:
             self.pv_asso_criterion = nn.BCEWithLogitsLoss(pos_weight=torch.ones(1))
 
-        # init event reconstruction class
+
         self.evt_reco = EventReconstruction(configs)
 
-        # Pruning threshold for reco
+
         self.edge_prune = configs["inference"]["edge_prune_thr"]
         self.node_prune = configs["inference"]["node_prune_thr"]
 
@@ -43,14 +43,14 @@ class DFEILightningModule(L.LightningModule):
         return self.model(batch)
 
     def test_step(self, batch, batch_idx):
-        if self.use_pid == "realistic":  # only for pythia
+        if self.use_pid == "realistic":
             batch["tracks"].x = torch.cat([batch["tracks"].x, batch["tracks"].real_pid], dim=1)
-        elif self.use_pid == "true":  # mc response for lhcb or onehot for pythia
+        elif self.use_pid == "true":
             batch["tracks"].x = torch.cat([batch["tracks"].x, batch["tracks"].pid], dim=1)
 
         outputs = self.model(batch)
 
-        # Getting the PV decisions
+
         if self.configs["pv_asso"]:
             minip = batch[("tracks", "to", "pvs")].edges.flatten()
             pv_asso_des = {"pred": self.model._blocks[-1].edge_weights[('tracks', 'to', 'pvs')].squeeze(), "minIP": minip}

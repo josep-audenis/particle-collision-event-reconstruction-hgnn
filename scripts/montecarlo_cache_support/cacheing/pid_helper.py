@@ -22,7 +22,7 @@ def load_pid_data(keys):
 def get_prob_at_p(p_val, pid_feature_list, interpolators, cov_matrix, noise_std=0.05):
     p_val = np.asarray(p_val)
 
-    # Interpolate mean values at all p values at once
+
     mean_values = np.column_stack([
         interpolators[var](
             np.clip(p_val, interpolators[var].x.min(), interpolators[var].x.max())
@@ -43,7 +43,7 @@ def get_prob_at_p(p_val, pid_feature_list, interpolators, cov_matrix, noise_std=
 
     noisy_values /= noisy_values.sum(axis=1, keepdims=True)
 
-    # Create DataFrame
+
     result_df = pd.DataFrame({
         'p': p_val,
         pid_feature_list[0]: noisy_values[:, 0],

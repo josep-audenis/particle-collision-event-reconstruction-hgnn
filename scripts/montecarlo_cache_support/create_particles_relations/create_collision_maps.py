@@ -36,7 +36,7 @@ def create_collision_map(sig_file: str, bkg_file: str, indir: str, nu: int) -> d
     with uproot.open(f"{indir}/DFEI_pythia_generator/background/{bkg_file}") as file:
         bkg_evts = np.unique(file["Particles"]["EventNumber"].array(library="np").astype(np.uint32))
 
-    # Create mapping between sig pv to bkg pv for read in
+
     col_dict = {}
     bkg_pvs_list = []
     num_pvs = np.maximum(1, np.random.poisson(nu, size=len(sig_evts)))
@@ -52,7 +52,7 @@ def create_collision_map(sig_file: str, bkg_file: str, indir: str, nu: int) -> d
         bkg_pvs_list.append(selected)
     bkg_pvs = np.unique(np.concatenate(bkg_pvs_list) if bkg_pvs_list else np.array([]))
 
-    # Loading in the data of sig and bkg pvs
+
     vars  = ["EventNumber", "ParticleIndex",
              "xPV", "yPV", "zPV", "xPV_reco", "yPV_reco", "zPV_reco"]
     sig_df = load_data(indir, sig_file, sig_mode, vars)

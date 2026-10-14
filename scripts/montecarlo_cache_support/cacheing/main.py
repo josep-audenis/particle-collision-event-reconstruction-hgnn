@@ -10,8 +10,8 @@ from GraphConstruction import GraphConstruction
 from helper import *
 
 if __name__ == "__main__":
-    # python main.py --indir /eos/lhcb/user/y/yukaiz/DFEI_data/DFEI_pythia_particles_relations/ --outdir /eos/user/y/yukaiz/DFEI_IFT/cached_data/ --file Event_data_particles_inclusive_nu7p6_00079000_to_00079999.root --ft --normed
-    # python main.py --indir /eos/lhcb/user/y/yukaiz/DFEI_data/DFEI_LHCb_particles_relations/ --outdir /eos/user/y/yukaiz/DFEI_IFT/cached_data/ --file Event_data_particles_inclusive_LHCbcollision_00000000_to_00000999.root  --normed --identifier 00258329
+
+
     parser = argparse.ArgumentParser(description='Process signal and simulation files')
     parser.add_argument('--indir', type=str, default=None,
                         help='in directory')
@@ -37,17 +37,30 @@ if __name__ == "__main__":
                      "xProd_reco", "yProd_reco", "zProd_reco",
                      "charge", "ghost_prob"
                      ]
-    pythia_pid_features = ['Prob_k', 'Prob_e', 'Prob_mu', 'Prob_p', 'Prob_pi'
-                           # real prob kinda exist but not check
-                           # 'real_prob_k', 'real_prob_e', 'real_prob_mu', 'real_prob_p', 'real_prob_pi'
-                           ]
-    # we change the definition of Prob_ghost to ghost_prob to be not selected to a pid container
-    lhcb_pid_features = ['Prob_k', 'Prob_e', 'Prob_mu', 'Prob_p', 'Prob_pi']
+    # True MC PID (Prob_*) and the realistic sampled detector response (real_prob_*).
+    # Cache BOTH so configs can select use_pid: "true" (oracle ceiling) or
+    # use_pid: "realistic" (defensible, detector-like) without re-caching.
+    # real_prob_* derivation needs precomputed PID maps (data/<key>_corr.npz +
+    # data/<key>_interpolators.npz), built from an inclusive sample. If those maps
+    # are absent (e.g. the EOS source in create_pid_response.create_maps is
+    # unreachable) we cache detector PID only (Prob_*) instead of crashing.
+    base_pid_features = ['Prob_k', 'Prob_e', 'Prob_mu', 'Prob_p', 'Prob_pi']
+    realistic_pid_features = ['real_prob_k', 'real_prob_e', 'real_prob_mu', 'real_prob_p', 'real_prob_pi']
 
-    if args.identifier is None:
-        node_features = node_features + pythia_pid_features
+    pid_map_keys = ['k', 'e', 'mu', 'p', 'pi']
+    realistic_pid_available = all(
+        os.path.exists(f"data/{k}_corr.npz") and os.path.exists(f"data/{k}_interpolators.npz")
+        for k in pid_map_keys
+    )
+    if realistic_pid_available:
+        pid_features = base_pid_features + realistic_pid_features
     else:
-        node_features = node_features + lhcb_pid_features
+        print("WARNING: realistic-PID maps (data/<key>_corr.npz) not found; "
+              "caching detector PID only (Prob_*). To cache real_prob_*, build the "
+              "maps first (create_pid_response.create_maps).")
+        pid_features = base_pid_features
+
+    node_features = node_features + pid_features
 
     edge_features = ["FromSameAssociatedPV_reco", "theta_reco", "trdist_reco", "delta_z0_reco", "log_DOCA_reco"]
 
@@ -59,7 +72,7 @@ if __name__ == "__main__":
                             topo_classes=topo_classes, identifier=args.identifier,
                             use_ft=args.ft, edge_prune=args.edgeprune)
 
-    # Creating outdir syntax
+
     pattern = rf"{re.escape(env.decay)}_([^_]+)"
     match = re.search(pattern, args.file)
     conditions = match.group(1)
@@ -71,9 +84,9 @@ if __name__ == "__main__":
         outdir = args.outdir + f"DFEI_{env.simulation_type}_{conditions}_pt_data/{args.identifier}_{env.decay}/"
     os.makedirs(outdir, exist_ok=True)
 
-    # just copy the old one and apply on new caching one
     start, end = env.start, env.end + 1
-    thr = 0.8
+    train_thr = 0.70
+    val_thr = 0.85
     mode = args.mode
     print("Using mode", mode)
 
@@ -84,40 +97,49 @@ if __name__ == "__main__":
     for i in tqdm(range(start, end), desc="Cacheing"):
         env.get_event(i)
         data = env.get_graph()
-        # Check if the graph has sufficient amount of nodes
+
         if data == 0:
             complete_fail += 1
             print("not enough tracks", i)
             continue
 
-        # apply normalization
+
         if args.normed:
             data = env.normalize_graph(data)
 
-        if (mode == "default" and i < int(start + thr * (end - start))) or mode == "trn_only":
+        train_end = int(start + train_thr * (end - start))
+        val_end = int(start + val_thr * (end - start))
+        if (mode == "default" and i < train_end) or mode == "trn_only":
             trn_data.append(data)
+            continue
+
+        # val and test both need the full truth augmentation: the eval/selection
+        # path (get_tst_loader with split=val|tst) reads truth_* fields off every
+        # graph. Previously val was deep-copied without these fields, so val-split
+        # eval crashed with "'HeteroData' has no attribute 'truth_senders'".
+        particle_keys = {"final_keys": "ExpandedParticleIndex", "part_ids": "id"}
+        data = env.add_particle_info(data, particle_keys)
+        data = env.add_particle_info(data, {"asso_hh": "ExpandedPrimaryHeavyHadronIndex"}, node="tracks")
+        if env.simulation_type == "pythia":
+            data = env.add_particle_info(data, {"nfinals": "nFinals"}, node="tracks")
+        relation_keys = {"moth_ids": "TopoLCA_ids"}
+        data = env.add_relation_info(data, relation_keys)
+
+        if env.simulation_type == "LHCb":
+            data = env.add_evt_run_number(data)
+
+
+        env.use_only_signal_particles = True
+        particle_keys = {"truth_part_keys": "ExpandedParticleIndex", "truth_part_ids": "id"}
+        data = env.add_particle_info(data, particle_keys)
+        relation_keys = {"truth_moth_ids": "TopoLCA_ids", "lca_chain": "LCA"}
+        data = env.add_relation_info(data, relation_keys)
+
+        data = env.get_true_graph(data)
+
+        if mode == "default" and i < val_end:
+            val_data.append(data)
         else:
-            if mode != "tst_only":
-                val_data.append(copy.deepcopy(data))
-            particle_keys = {"final_keys": "ExpandedParticleIndex", "part_ids": "id"}
-            data = env.add_particle_info(data, particle_keys)
-            data = env.add_particle_info(data, {"asso_hh": "ExpandedPrimaryHeavyHadronIndex"}, node="tracks")
-            if env.simulation_type == "pythia":  # currently only exists in pythia :c
-                data = env.add_particle_info(data, {"nfinals": "nFinals"}, node="tracks")
-            relation_keys = {"moth_ids": "TopoLCA_ids"}
-            data = env.add_relation_info(data, relation_keys)
-
-            if env.simulation_type == "LHCb":
-                data = env.add_evt_run_number(data)
-
-            # Only information from signal particles
-            env.use_only_signal_particles = True
-            particle_keys = {"truth_part_keys": "ExpandedParticleIndex", "truth_part_ids": "id"}
-            data = env.add_particle_info(data, particle_keys)
-            relation_keys = {"truth_moth_ids": "TopoLCA_ids", "lca_chain": "LCA"}
-            data = env.add_relation_info(data, relation_keys)
-            # get lca reco of signal particles only
-            data = env.get_true_graph(data)
             tst_data.append(data)
             '''
             # Checking the pv
@@ -137,11 +159,12 @@ if __name__ == "__main__":
     print("Number of events without any tracks", complete_fail)
     print("=" * 30)
     print("Writing graphs to disc")
-    # saving the files
     if mode == "default":
-        trn_file = f"{outdir}/trn_data_{str(start).zfill(8)}_{str(int(start + thr * (end - start - 1))).zfill(8)}.pt"
-        val_file = f"{outdir}/val_data_{str(int(start + thr * (end - start))).zfill(8)}_{str(end - 1).zfill(8)}.pt"
-        tst_file = f"{outdir}/tst_data_{str(int(start + thr * (end - start))).zfill(8)}_{str(end - 1).zfill(8)}.pt"
+        train_end = int(start + train_thr * (end - start))
+        val_end = int(start + val_thr * (end - start))
+        trn_file = f"{outdir}/trn_data_{str(start).zfill(8)}_{str(train_end - 1).zfill(8)}.pt"
+        val_file = f"{outdir}/val_data_{str(train_end).zfill(8)}_{str(val_end - 1).zfill(8)}.pt"
+        tst_file = f"{outdir}/tst_data_{str(val_end).zfill(8)}_{str(end - 1).zfill(8)}.pt"
         save_compressed(trn_data, trn_file, level=3)
         save_compressed(val_data, val_file, level=3)
         save_compressed(tst_data, tst_file, level=3)

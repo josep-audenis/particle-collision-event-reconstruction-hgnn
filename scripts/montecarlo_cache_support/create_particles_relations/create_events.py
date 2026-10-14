@@ -11,25 +11,25 @@ def create_event(i: int,
                  stable_charged_df: pd.DataFrame, stable_photon_df, stable_pion_df,
                  heavy_hadron_df, unstable_from_hh_df,
                  evt_dict: dict = None):
-    # Initiate the dictionaries that will store the information on the structure of the decay chains
+
     decay_dict = {"ancestors_per_particle": {}, "topo_ancestors_per_particle": {},
                   "ancestors_ids_per_particle": {}, "topo_ancestors_ids_per_particle": {},
                   "max_decay_chain_lengths": {-1: 0}, "topo_max_decay_chain_lengths": {-1: 0}}
     output_data_particles_list = []
 
-    # To note, here the acceptance is completely ignored but is taken account in the cacheing
-    # Only stable particle are saved in the particles files which are then sorted by geom acceptance during cacheing
-    if evt_dict is not None:  # equivalent to pythia sim
+
+
+    if evt_dict is not None:
         col_idx_list = evt_dict["CollisionIndexList"]
         idx_offset = evt_dict["IndexOffsetList"]
         col_offset_map = dict(zip(col_idx_list, idx_offset))
 
-        # Obtaining pv information
+
         true_pvs = np.array(evt_dict["TruePVCoords"])
-        reco_pvs = np.array(evt_dict["RecoPVCoords"])  # There might be issues here lets wait...
+        reco_pvs = np.array(evt_dict["RecoPVCoords"])
         inf_mask = np.isinf(reco_pvs)
         reco_pvs[inf_mask] = true_pvs[inf_mask]
-        # Get the df contain only pvs from the event
+
         temp = get_evt_df(col_idx_list, col_offset_map, i,
                           stable_charged_df, stable_photon_df, stable_pion_df,
                           heavy_hadron_df, unstable_from_hh_df)
@@ -41,7 +41,7 @@ def create_event(i: int,
                                                       heavy_hadron_df, unstable_from_hh_df)
         stable_charged_df, stable_photon_df, stable_pion_df, heavy_hadron_df, unstable_from_hh_df = temp
 
-    # Setting the one with particleindex 0 to a different value
+
     list_of_df = [stable_charged_df, stable_photon_df, stable_pion_df, heavy_hadron_df, unstable_from_hh_df]
     zero_remap = np.max(pd.concat(list_of_df)["ExpandedParticleIndex"]) + 1
     for df in [stable_charged_df, stable_photon_df, stable_pion_df, heavy_hadron_df, unstable_from_hh_df]:
@@ -68,7 +68,7 @@ def create_event(i: int,
         cols = [f'ExpandedParticleIndex', f'ExpandedMotherIndex',
                 'ParticleIndex', 'id', 'gammactau', 'NumVisDaugh']
         unstable_from_hh_df = unstable_from_hh_df[cols].drop_duplicates()
-    else: # no hh hadron at all in the event
+    else:
         return 0
 
     """Process charged stable particles"""
@@ -79,8 +79,8 @@ def create_event(i: int,
         if isinstance(stable_charged_df, int):
             return 0
         output_data_particles_list.append(stable_charged_df)
-    # Does it even make sense to separate them. This basically uses different decay dict and build different graphs
-    # They should be merged as long we want to have them all in a single graph
+
+
     """Process photon particles"""
     if stable_photon_df.shape[0] > 0 and False:
         stable_photon_df = process_finals(stable_photon_df, unstable_from_hh_df, heavy_hadron_df, heavy_hadron_indices,
@@ -89,7 +89,7 @@ def create_event(i: int,
             return 0
         output_data_particles_list.append(stable_photon_df)
     """Process neutral pion particles"""
-    if stable_pion_df.shape[0] > 0 and False: # empty anyways
+    if stable_pion_df.shape[0] > 0 and False:
         stable_pion_df = process_finals(stable_pion_df, unstable_from_hh_df, heavy_hadron_df, heavy_hadron_indices,
                                         true_pvs, reco_pvs, decay_dict)
         if isinstance(stable_pion_df, int):
@@ -98,19 +98,19 @@ def create_event(i: int,
 
     output_data_particles = pd.concat(output_data_particles_list, ignore_index=True, sort=True)
     if evt_dict is not None:
-        mode = "onehot" # this is for pid information
+        mode = "onehot"
     else:
         mode= "LHCb"
     output_data_particles = compute_particle_PID(output_data_particles, mode=mode)
     output_data_particles = output_data_particles.drop_duplicates(subset=f'ExpandedParticleIndex')
 
-    # In principle here is some trigger implementation which is not kept
+
 
     """Computing the relations"""
     relations_buffer = pd.DataFrame()
     relations_buffer = prcoess_relations(i, relations_buffer, output_data_particles, decay_dict)
 
-    # Remove unnecessary columns
+
     relations_buffer.drop(
         columns=['p1_xProd', 'p1_yProd', 'p1_zProd', 'p1_px', 'p1_py', 'p1_pz', 'p2_xProd', 'p2_yProd', 'p2_zProd',
                  'p2_px', 'p2_py', 'p2_pz', 'p1_xProd_reco', 'p1_yProd_reco', 'p1_zProd_reco', 'p1_px_reco',
@@ -150,22 +150,22 @@ def create_multiple_events(infile: str, vars: List[str], bunch, outfile_suffix: 
         raise ValueError("Undefined simulation type")
 
     stable_charged_df = df[
-        (df['isFinal'] == 1) & (df['isCharged'] == 1) & (df['zProd_reco'] > -500) & (df['zProd_reco'] < 500)]  # VELO acceptance
+        (df['isFinal'] == 1) & (df['isCharged'] == 1) & (df['zProd_reco'] > -500) & (df['zProd_reco'] < 500)]
     stable_photon_df = df[(df['isFinal'] == 1) & (df['id'] == 22) & (df['pz_reco'] > 0)]
     stable_pion_df = df[(df['isFinal'] == 1) & (df['id'] == 111) & (df['pz_reco'] > 0)]
 
-    # Give the B hadron head of the decay chain
-    # Only selecting B events rn
-    # heavy_hadron_df = df[(df['PrimaryHeavyHadronIndex'] == -1) &
-    #                      ((df['isbhadron'] == 1) | (df["ischadron"] == 1)) &
-    #                      (df['isFinal'] == 0)]
+
+
+
+
+
     heavy_hadron_df = df[(df['PrimaryHeavyHadronIndex'] == -1) & (df['isbhadron'] == 1) &
                          (df['isFinal'] == 0)]
 
     unstable_from_hh_df = df[(df['isFinal'] == 0) & (df['PrimaryHeavyHadronIndex'] != -1)]
 
     results = []
-    # Here we need to compare the intermediate data
+
     for i in tqdm(bunch, desc="Processing events"):
         if sim == "pythia":
             res = create_event(i,
